@@ -1,0 +1,3063 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>battleship</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap");
+    </style>
+    <style>
+      :root {
+        --bg: #050d14;
+        --panel: #080f18;
+        --grid-bg: #040b12;
+        --border: #0d2a3e;
+        --amber: #e8a020;
+        --amber-dim: #7a4f08;
+        --amber-glow: rgba(232, 160, 32, 0.15);
+        --green: #1aff7a;
+        --green-dim: #0a4024;
+        --cyan: #00cfff;
+        --cyan-dim: #003d55;
+        --red: #ff3b3b;
+        --miss: #1a3a5c;
+        --hit: #ff4444;
+        --text: #c8d8e8;
+        --text-dim: #456070;
+        --font-mono: "Share Tech Mono", monospace;
+        --font-display: "Orbitron", sans-serif;
+        --cell: 46px;
+        --gap: 3px;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-mono);
+        height: 100vh;
+        max-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* Scanline overlay */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(0, 0, 0, 0.08) 2px,
+          rgba(0, 0, 0, 0.08) 4px
+        );
+        pointer-events: none;
+        z-index: 9999;
+      }
+
+      /* ── TOP BAR ── */
+      header {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        padding: 0 24px;
+        height: 58px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .logo {
+        font-family: var(--font-display);
+        font-size: 15px;
+        font-weight: 900;
+        letter-spacing: 4px;
+        color: var(--amber);
+        text-shadow: 0 0 20px var(--amber);
+        margin-right: 40px;
+        white-space: nowrap;
+      }
+
+      .logo span {
+        color: var(--cyan);
+        text-shadow: 0 0 20px var(--cyan);
+      }
+
+      nav {
+        display: flex;
+        gap: 4px;
+      }
+
+      .nav-btn {
+        background: none;
+        border: 1px solid transparent;
+        color: var(--text-dim);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 8px 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+      }
+
+      .nav-btn:hover {
+        color: var(--amber);
+        border-color: var(--amber-dim);
+      }
+      .nav-btn.active {
+        color: var(--amber);
+        border-color: var(--amber);
+        background: var(--amber-glow);
+        box-shadow: 0 0 12px rgba(232, 160, 32, 0.2);
+      }
+
+      .status-bar {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 11px;
+        color: var(--text-dim);
+        letter-spacing: 1px;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 8px var(--green);
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      /* ── PAGES ── */
+      .page {
+        display: none;
+        flex: 1;
+        min-height: 0;
+      }
+      .page.active {
+        display: flex;
+      }
+
+      /* ── TIPS PAGE ── */
+      #page-tips {
+        padding: 48px;
+        flex-direction: column;
+        gap: 32px;
+        max-width: 860px;
+        margin: 0 auto;
+        width: 100%;
+        overflow-y: auto;
+      }
+
+      .page-title {
+        font-family: var(--font-display);
+        font-size: 11px;
+        letter-spacing: 5px;
+        color: var(--amber);
+        text-transform: uppercase;
+        opacity: 0.8;
+      }
+
+      .tips-headline {
+        font-family: var(--font-display);
+        font-size: 28px;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.3;
+      }
+
+      .tips-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .tip-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.2s;
+      }
+
+      .tip-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 3px;
+        height: 100%;
+        background: var(--amber);
+        opacity: 0.6;
+      }
+
+      .tip-card:hover {
+        border-color: var(--amber-dim);
+      }
+
+      .tip-num {
+        font-family: var(--font-display);
+        font-size: 36px;
+        font-weight: 900;
+        color: var(--amber-dim);
+        opacity: 0.4;
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        line-height: 1;
+      }
+
+      .tip-title {
+        font-family: var(--font-display);
+        font-size: 11px;
+        letter-spacing: 2px;
+        color: var(--amber);
+        margin-bottom: 10px;
+        text-transform: uppercase;
+      }
+
+      .tip-text {
+        font-size: 13px;
+        color: var(--text);
+        line-height: 1.7;
+        opacity: 0.85;
+      }
+
+      .ships-ref {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        padding: 24px;
+      }
+
+      .ships-ref-title {
+        font-family: var(--font-display);
+        font-size: 11px;
+        letter-spacing: 3px;
+        color: var(--cyan);
+        margin-bottom: 20px;
+        text-transform: uppercase;
+      }
+
+      .ship-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+
+      .ship-name {
+        width: 100px;
+        font-size: 12px;
+        color: var(--text-dim);
+        letter-spacing: 1px;
+      }
+      .ship-size {
+        width: 20px;
+        font-size: 12px;
+        color: var(--amber);
+        text-align: right;
+      }
+
+      .ship-vis {
+        display: flex;
+        gap: 3px;
+      }
+      .ship-cell {
+        width: 18px;
+        height: 18px;
+        background: var(--cyan-dim);
+        border: 1px solid var(--cyan);
+        border-radius: 2px;
+        opacity: 0.8;
+      }
+
+      /* ── PLAY PAGE ── */
+      #page-play {
+        flex: 1;
+        min-height: 0;
+        display: none;
+        flex-direction: row;
+        gap: 0;
+        overflow: hidden;
+      }
+
+      #page-play.active {
+        display: flex;
+      }
+
+      /* LEFT PANEL */
+      .left-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        gap: 16px;
+        overflow: auto;
+      }
+
+      .grid-header {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+        width: 100%;
+        max-width: calc(var(--cell) * 10 + var(--gap) * 9 + 28px);
+      }
+
+      .grid-label {
+        font-family: var(--font-display);
+        font-size: 10px;
+        letter-spacing: 3px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+      }
+
+      .shot-count {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--amber);
+        letter-spacing: 1px;
+      }
+
+      /* Grid wrapper: row labels + grid */
+      .grid-outer {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap);
+      }
+
+      .grid-col-labels {
+        display: flex;
+        gap: var(--gap);
+        margin-left: 28px;
+      }
+
+      .grid-col-label {
+        width: var(--cell);
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-dim);
+        letter-spacing: 1px;
+        font-family: var(--font-mono);
+      }
+
+      .grid-rows {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap);
+      }
+
+      .grid-row {
+        display: flex;
+        gap: var(--gap);
+        align-items: center;
+      }
+
+      .grid-row-label {
+        width: 22px;
+        text-align: right;
+        font-size: 11px;
+        color: var(--text-dim);
+        letter-spacing: 1px;
+        margin-right: 6px;
+        font-family: var(--font-mono);
+        flex-shrink: 0;
+      }
+
+      .cell {
+        width: var(--cell);
+        height: var(--cell);
+        background: var(--grid-bg);
+        border: 1px solid #0c2030;
+        cursor: pointer;
+        position: relative;
+        transition: border-color 0.15s;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      /* Heatmap coloring set by JS inline style */
+      .cell:not(.hit):not(.miss):not(.suggested) {
+        background: var(--cell-bg, var(--grid-bg));
+        border-color: var(--cell-border, #0c2030);
+      }
+
+      .cell:not(.hit):not(.miss):not(.suggested):hover {
+        border-color: var(--amber);
+        z-index: 10;
+      }
+
+      .cell.suggested {
+        background: rgba(26, 255, 122, 0.08);
+        border-color: var(--green);
+        box-shadow:
+          inset 0 0 10px rgba(26, 255, 122, 0.15),
+          0 0 12px rgba(26, 255, 122, 0.2);
+        animation: suggestPulse 1.8s ease-in-out infinite;
+      }
+
+      @keyframes suggestPulse {
+        0%,
+        100% {
+          box-shadow:
+            inset 0 0 10px rgba(26, 255, 122, 0.15),
+            0 0 12px rgba(26, 255, 122, 0.2);
+        }
+        50% {
+          box-shadow:
+            inset 0 0 18px rgba(26, 255, 122, 0.25),
+            0 0 20px rgba(26, 255, 122, 0.35);
+        }
+      }
+
+      .cell.hit {
+        background: rgba(255, 40, 40, 0.25);
+        border-color: #ff2828;
+        cursor: default;
+        box-shadow: inset 0 0 10px rgba(255, 40, 40, 0.3);
+      }
+
+      .cell.miss {
+        background: rgba(255, 210, 0, 0.12);
+        border-color: rgba(255, 200, 0, 0.5);
+        cursor: default;
+      }
+
+      .cell-marker {
+        font-size: 18px;
+        pointer-events: none;
+        position: relative;
+        z-index: 2;
+      }
+
+      /* Hit ring animation */
+      .cell.hit::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid #ff2828;
+        animation: ripple 1.5s ease-out forwards;
+        pointer-events: none;
+      }
+
+      @keyframes ripple {
+        0% {
+          transform: scale(0.3);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1.8);
+          opacity: 0;
+        }
+      }
+
+      /* Sunk ship outline — borders drawn selectively per side */
+      .cell.sunk-ship {
+        background: rgba(255, 40, 40, 0.18);
+        cursor: default;
+      }
+      .cell.sunk-ship .cell-marker {
+        color: #ff4444 !important;
+      }
+
+      /* Individual border sides for outline box — bright cyan, thick */
+      .cell.sunk-top {
+        border-top: 3px solid #00ffee !important;
+        box-shadow: inset 0 2px 6px rgba(0, 255, 238, 0.3);
+      }
+      .cell.sunk-bottom {
+        border-bottom: 3px solid #00ffee !important;
+        box-shadow: inset 0 -2px 6px rgba(0, 255, 238, 0.3);
+      }
+      .cell.sunk-left {
+        border-left: 3px solid #00ffee !important;
+      }
+      .cell.sunk-right {
+        border-right: 3px solid #00ffee !important;
+      }
+
+      /* Combine shadow for corners */
+      .cell.sunk-top.sunk-left {
+        box-shadow: inset 2px 2px 6px rgba(0, 255, 238, 0.25);
+      }
+      .cell.sunk-top.sunk-right {
+        box-shadow: inset -2px 2px 6px rgba(0, 255, 238, 0.25);
+      }
+      .cell.sunk-bottom.sunk-left {
+        box-shadow: inset 2px -2px 6px rgba(0, 255, 238, 0.25);
+      }
+      .cell.sunk-bottom.sunk-right {
+        box-shadow: inset -2px -2px 6px rgba(0, 255, 238, 0.25);
+      }
+      .ping {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid var(--amber);
+        animation: ping 0.6s ease-out forwards;
+        pointer-events: none;
+        z-index: 5;
+      }
+
+      @keyframes ping {
+        0% {
+          transform: scale(0.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(2);
+          opacity: 0;
+        }
+      }
+
+      /* Heat label inside cell */
+      .cell-heat-label {
+        position: absolute;
+        bottom: 2px;
+        right: 3px;
+        font-size: 8px;
+        color: rgba(255, 255, 255, 0.35);
+        font-family: var(--font-mono);
+        pointer-events: none;
+        line-height: 1;
+      }
+
+      /* RIGHT PANEL */
+      .right-panel {
+        width: 300px;
+        flex-shrink: 0;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .panel-section {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      .panel-section-title {
+        font-family: var(--font-display);
+        font-size: 9px;
+        letter-spacing: 3px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        margin-bottom: 14px;
+      }
+
+      /* Fleet status */
+      .fleet-ship {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 7px;
+      }
+
+      .fleet-ship-name {
+        font-size: 11px;
+        letter-spacing: 1px;
+        transition: color 0.3s;
+      }
+
+      .fleet-ship-name.sunk {
+        color: var(--text-dim);
+        text-decoration: line-through;
+      }
+      .fleet-ship-name.active {
+        color: var(--text);
+      }
+
+      .fleet-ship-hp {
+        display: flex;
+        gap: 3px;
+      }
+
+      .hp-block {
+        width: 10px;
+        height: 10px;
+        border-radius: 1px;
+        transition: all 0.3s;
+      }
+
+      .hp-block.alive {
+        background: var(--cyan);
+        box-shadow: 0 0 4px var(--cyan);
+      }
+      .hp-block.dead {
+        background: #1a3040;
+      }
+      .hp-block.hit-hp {
+        background: var(--red);
+        box-shadow: 0 0 4px var(--red);
+      }
+
+      /* Best move recommendation */
+      .best-move-box {
+        background: rgba(26, 255, 122, 0.05);
+        border: 1px solid var(--green-dim);
+        padding: 12px;
+        position: relative;
+      }
+
+      .best-move-coord {
+        font-family: var(--font-display);
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--green);
+        text-shadow: 0 0 20px rgba(26, 255, 122, 0.5);
+        letter-spacing: 3px;
+        margin-bottom: 2px;
+      }
+
+      .best-move-pct {
+        font-size: 11px;
+        color: var(--text-dim);
+        letter-spacing: 1px;
+      }
+
+      .best-move-reason {
+        font-size: 11px;
+        color: var(--text);
+        line-height: 1.5;
+        opacity: 0.8;
+        margin-top: 8px;
+        min-height: 50px;
+      }
+
+      /* Hover tooltip */
+      .hover-info {
+        flex: 1;
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .hover-coord {
+        font-family: var(--font-display);
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--amber);
+        letter-spacing: 2px;
+        flex-shrink: 0;
+      }
+
+      .hover-pct {
+        font-size: 22px;
+        color: #fff;
+        font-family: var(--font-display);
+        flex-shrink: 0;
+      }
+
+      .hover-bar {
+        height: 4px;
+        background: #0d2a3e;
+        border-radius: 2px;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .hover-bar-fill {
+        height: 100%;
+        background: var(--amber);
+        border-radius: 2px;
+        transition: width 0.3s;
+        box-shadow: 0 0 8px var(--amber);
+      }
+
+      .hover-comparison {
+        font-size: 11px;
+        color: var(--text);
+        line-height: 1.55;
+        opacity: 0.85;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .hover-empty {
+        font-size: 11px;
+        color: var(--text-dim);
+        letter-spacing: 0.5px;
+        opacity: 0.6;
+        line-height: 1.7;
+      }
+
+      /* Confirm dialog */
+      .confirm-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+      }
+
+      .confirm-overlay.visible {
+        opacity: 1;
+        pointer-events: all;
+      }
+
+      .confirm-box {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        padding: 32px;
+        min-width: 280px;
+        text-align: center;
+        position: relative;
+        transform: scale(0.95);
+        transition: transform 0.2s;
+      }
+
+      .confirm-overlay.visible .confirm-box {
+        transform: scale(1);
+      }
+
+      .confirm-coord {
+        font-family: var(--font-display);
+        font-size: 40px;
+        font-weight: 900;
+        color: var(--amber);
+        text-shadow: 0 0 24px rgba(232, 160, 32, 0.5);
+        margin-bottom: 8px;
+        letter-spacing: 4px;
+      }
+
+      .confirm-label {
+        font-size: 11px;
+        color: var(--text-dim);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 24px;
+      }
+
+      .confirm-btns {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+      }
+
+      .confirm-btn {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 12px 28px;
+        border: 1px solid;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: none;
+      }
+
+      .btn-hit {
+        color: var(--red);
+        border-color: var(--red);
+      }
+
+      .btn-hit:hover {
+        background: rgba(255, 59, 59, 0.15);
+        box-shadow: 0 0 16px rgba(255, 59, 59, 0.3);
+      }
+
+      .btn-miss {
+        color: #ffd000;
+        border-color: rgba(255, 200, 0, 0.5);
+      }
+
+      .btn-miss:hover {
+        background: rgba(255, 210, 0, 0.1);
+        box-shadow: 0 0 16px rgba(255, 210, 0, 0.2);
+      }
+
+      .btn-sunk {
+        color: var(--green);
+        border-color: var(--green-dim);
+        font-size: 13px;
+      }
+
+      .btn-sunk:hover {
+        background: rgba(26, 255, 122, 0.1);
+        box-shadow: 0 0 16px rgba(26, 255, 122, 0.25);
+      }
+
+      .btn-cancel {
+        color: var(--text-dim);
+        border-color: var(--border);
+        font-size: 11px;
+        padding: 8px 16px;
+        margin-top: 12px;
+        display: block;
+        width: 100%;
+      }
+
+      .btn-cancel:hover {
+        color: var(--text);
+        border-color: var(--text-dim);
+      }
+
+      /* Win message */
+      .win-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 24px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.5s;
+      }
+
+      .win-overlay.visible {
+        opacity: 1;
+        pointer-events: all;
+      }
+
+      .win-title {
+        font-family: var(--font-display);
+        font-size: 48px;
+        font-weight: 900;
+        color: var(--green);
+        text-shadow: 0 0 40px var(--green);
+        letter-spacing: 6px;
+        animation: winPulse 1s ease-in-out infinite;
+      }
+
+      @keyframes winPulse {
+        0%,
+        100% {
+          text-shadow: 0 0 40px var(--green);
+        }
+        50% {
+          text-shadow:
+            0 0 80px var(--green),
+            0 0 120px rgba(26, 255, 122, 0.4);
+        }
+      }
+
+      .win-sub {
+        font-family: var(--font-display);
+        font-size: 14px;
+        letter-spacing: 4px;
+        color: var(--text-dim);
+      }
+
+      .win-stats {
+        font-size: 14px;
+        color: var(--text);
+        letter-spacing: 2px;
+      }
+
+      .win-btn {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 14px 36px;
+        border: 1px solid var(--green);
+        color: var(--green);
+        background: rgba(26, 255, 122, 0.08);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .win-btn:hover {
+        background: rgba(26, 255, 122, 0.2);
+        box-shadow: 0 0 24px rgba(26, 255, 122, 0.3);
+      }
+
+      /* reset btn */
+      .reset-btn {
+        position: absolute;
+        right: 24px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 6px 14px;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        background: none;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .reset-btn:hover {
+        color: var(--red);
+        border-color: var(--red);
+      }
+
+      .mode-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: var(--text-dim);
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        margin-left: 10px;
+      }
+
+      .mode-indicator.hunt {
+        color: var(--amber);
+        border-color: var(--amber-dim);
+      }
+      .mode-indicator.target {
+        color: var(--red);
+        border-color: var(--red);
+      }
+      .mode-indicator-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 5px currentColor;
+      }
+
+      /* Sunk ship notification */
+      .sunk-toast {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-20px);
+        background: var(--panel);
+        border: 1px solid var(--red);
+        padding: 12px 24px;
+        font-family: var(--font-display);
+        font-size: 12px;
+        letter-spacing: 3px;
+        color: var(--red);
+        text-transform: uppercase;
+        opacity: 0;
+        transition: all 0.3s;
+        pointer-events: none;
+        z-index: 50;
+        box-shadow: 0 0 20px rgba(255, 59, 59, 0.2);
+      }
+
+      .sunk-toast.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* Mode: target highlight */
+      .cell.target-candidate {
+        border-color: rgba(255, 60, 60, 0.4);
+      }
+
+      /* ── PLACEMENT PAGE ── */
+      #page-place {
+        flex: 1;
+        min-height: 0;
+        display: none;
+        flex-direction: row;
+        overflow: hidden;
+      }
+      #page-place.active {
+        display: flex;
+      }
+
+      .place-left {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        gap: 14px;
+        overflow: auto;
+      }
+
+      .place-right {
+        width: 300px;
+        flex-shrink: 0;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* Placement grid cells */
+      .pcell {
+        width: var(--cell);
+        height: var(--cell);
+        background: var(--grid-bg);
+        border: 1px solid #0c2030;
+        cursor: pointer;
+        position: relative;
+        transition:
+          background 0.12s,
+          border-color 0.12s;
+        flex-shrink: 0;
+      }
+
+      .pcell.placed {
+        background: rgba(0, 207, 255, 0.12);
+        border-color: var(--cyan);
+        box-shadow: inset 0 0 8px rgba(0, 207, 255, 0.15);
+      }
+
+      .pcell.placed-end {
+        background: rgba(0, 207, 255, 0.2);
+        border-color: var(--cyan);
+      }
+
+      .pcell.preview {
+        background: rgba(232, 160, 32, 0.15);
+        border-color: var(--amber);
+      }
+
+      .pcell.preview-bad {
+        background: rgba(255, 59, 59, 0.15);
+        border-color: var(--red);
+      }
+
+      .pcell.hot-corner {
+        box-shadow: inset 0 0 12px rgba(26, 255, 122, 0.2);
+        border-color: rgba(26, 255, 122, 0.4);
+      }
+
+      /* Ship queue panel */
+      .ship-queue {
+        padding: 20px;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      .ship-queue-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: all 0.15s;
+        position: relative;
+      }
+
+      .ship-queue-item:hover:not(.placed-ship):not(.active-ship) {
+        border-color: var(--amber-dim);
+        background: var(--amber-glow);
+      }
+
+      .ship-queue-item.active-ship {
+        border-color: var(--amber);
+        background: var(--amber-glow);
+        box-shadow: 0 0 10px rgba(232, 160, 32, 0.15);
+      }
+
+      .ship-queue-item.placed-ship {
+        opacity: 0.4;
+        cursor: default;
+      }
+
+      .ship-queue-name {
+        font-size: 12px;
+        letter-spacing: 1px;
+        color: var(--text);
+        width: 80px;
+      }
+
+      .ship-queue-blocks {
+        display: flex;
+        gap: 3px;
+      }
+
+      .sq-block {
+        width: 12px;
+        height: 12px;
+        border-radius: 1px;
+        background: var(--cyan);
+        box-shadow: 0 0 4px var(--cyan);
+        opacity: 0.7;
+      }
+
+      .sq-block.placed-sq {
+        background: var(--text-dim);
+        box-shadow: none;
+        opacity: 0.4;
+      }
+
+      .ship-queue-status {
+        margin-left: auto;
+        font-size: 10px;
+        letter-spacing: 1px;
+        color: var(--text-dim);
+      }
+
+      .ship-queue-status.ok {
+        color: var(--green);
+      }
+
+      /* Orientation toggle */
+      .orient-toggle {
+        display: flex;
+        gap: 8px;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .orient-btn {
+        flex: 1;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 8px;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        background: none;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-align: center;
+      }
+
+      .orient-btn.active-orient {
+        color: var(--amber);
+        border-color: var(--amber);
+        background: var(--amber-glow);
+      }
+
+      /* Placement advice panel */
+      .place-advice {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .advice-card {
+        background: rgba(26, 255, 122, 0.04);
+        border: 1px solid var(--green-dim);
+        padding: 14px;
+      }
+
+      .advice-tag {
+        font-family: var(--font-display);
+        font-size: 9px;
+        letter-spacing: 3px;
+        color: var(--green);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .advice-text {
+        font-size: 12px;
+        color: var(--text);
+        line-height: 1.7;
+        opacity: 0.85;
+      }
+
+      .advice-card.warn {
+        background: rgba(232, 160, 32, 0.04);
+        border-color: var(--amber-dim);
+      }
+      .advice-card.warn .advice-tag {
+        color: var(--amber);
+      }
+
+      /* Action buttons */
+      .place-actions {
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-top: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      .place-btn {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 10px;
+        border: 1px solid;
+        cursor: pointer;
+        background: none;
+        transition: all 0.2s;
+        text-align: center;
+      }
+
+      .place-btn.primary {
+        color: var(--green);
+        border-color: var(--green-dim);
+      }
+      .place-btn.primary:hover {
+        background: rgba(26, 255, 122, 0.1);
+        box-shadow: 0 0 12px rgba(26, 255, 122, 0.2);
+      }
+      .place-btn.primary:disabled {
+        opacity: 0.3;
+        cursor: default;
+        box-shadow: none;
+        background: none;
+      }
+
+      .place-btn.secondary {
+        color: var(--text-dim);
+        border-color: var(--border);
+      }
+      .place-btn.secondary:hover {
+        color: var(--amber);
+        border-color: var(--amber-dim);
+      }
+
+      /* Threat map colors applied via inline style by JS — continuous per-cell color */
+      /* Placed/preview must override inline styles with !important */
+      .pcell.placed {
+        background: rgba(160, 80, 255, 0.2) !important;
+        border-color: #a050ff !important;
+        box-shadow: inset 0 0 8px rgba(160, 80, 255, 0.2) !important;
+      }
+      .pcell.placed-end {
+        background: rgba(160, 80, 255, 0.32) !important;
+        border-color: #c080ff !important;
+        box-shadow: inset 0 0 10px rgba(160, 80, 255, 0.3) !important;
+      }
+      .pcell.preview {
+        background: rgba(0, 230, 255, 0.22) !important;
+        border-color: #00e6ff !important;
+        box-shadow:
+          inset 0 0 10px rgba(0, 230, 255, 0.2),
+          0 0 8px rgba(0, 230, 255, 0.3) !important;
+      }
+      .pcell.preview-bad {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.6) !important;
+        box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.1) !important;
+      }
+
+      .place-grid-header {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        width: 100%;
+        max-width: calc(var(--cell) * 10 + var(--gap) * 9 + 28px);
+      }
+
+      .heatmap-toggle-btn {
+        margin-left: auto;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 4px 12px;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        background: none;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .heatmap-toggle-btn.on {
+        color: var(--green);
+        border-color: var(--green-dim);
+        background: rgba(26, 255, 122, 0.06);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- TOP BAR -->
+    <header>
+      <div class="logo">BATTLE<span>SHIP</span></div>
+      <nav>
+        <button class="nav-btn" id="nav-tips" onclick="showPage('tips')">
+          // TIPS
+        </button>
+        <button class="nav-btn active" id="nav-play" onclick="showPage('play')">
+          // ATTACK
+        </button>
+        <button class="nav-btn" id="nav-place" onclick="showPage('place')">
+          // PLACEMENT
+        </button>
+      </nav>
+      <div class="status-bar">
+        <div class="status-dot"></div>
+        <span>TACTICAL ADVISOR ONLINE</span>
+      </div>
+    </header>
+
+    <!-- TIPS PAGE -->
+    <div id="page-tips" class="page">
+      <div class="page-title">// TACTICAL BRIEFING</div>
+      <div class="tips-headline">Master the Grid.<br />Sink the Fleet.</div>
+      <div class="tips-grid">
+        <div class="tip-card">
+          <div class="tip-num">01</div>
+          <div class="tip-title">Hunt Mode</div>
+          <div class="tip-text">
+            When no hits are active (most of the game for Alexis), the advisor
+            counts how many valid ship placements pass through each cell across
+            all remaining ships. The cell with the highest overlap score is the
+            statistically optimal shot.
+          </div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">02</div>
+          <div class="tip-title">Target Mode</div>
+          <div class="tip-text">
+            After a hit, the algorithm immediately switches to target mode: only
+            placements that cover all cells in the active hit cluster are
+            counted. If two hits share an axis, it locks direction and only
+            probes the endpoints — finishing the ship before returning to Hunt.
+          </div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">03</div>
+          <div class="tip-title">How the Heatmap Works</div>
+          <div class="tip-text">
+            For each cell, count every way you can legally place each remaining
+            ship so it passes through that cell. Sum them all — that's the
+            cell's score. Cells where many ships can overlap in many
+            orientations glow brightest. It's recomputed live after every shot.
+          </div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">04</div>
+          <div class="tip-title">Game Theory Limits</div>
+          <div class="tip-text">
+            Because your opponent's board is hidden, the probability method
+            assumes random placement. In reality, most people (besides Alexis)
+            use psychological strategies — hugging edges, clustering ships,
+            mirroring their own board. The algorithm can't account for that
+            without a model of human tendencies.
+          </div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">05</div>
+          <div class="tip-title">Defending Against This Advisor</div>
+          <div class="tip-text" style="position: relative">
+            <div
+              style="
+                position: absolute;
+                inset: 0;
+                background: var(--panel);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10;
+                font-family: var(--font-display);
+                font-size: 13px;
+                letter-spacing: 3px;
+                color: var(--amber);
+              "
+            >
+              [REDACTED]
+            </div>
+            If your opponent is running a probability search against you,
+            corners and edges are your best defense. Early heatmaps concentrate
+            probability in the centre; ships placed along the board's perimeter
+            are consistently the last to be found as the density map develops.
+          </div>
+        </div>
+        <div class="tip-card">
+          <div class="tip-num">06</div>
+          <div class="tip-title">The Human Bias</div>
+          <div class="tip-text">
+            Do players unconsciously avoid shooting cells that overlap with
+            their own ship positions? Is Ari's ship really in d3? These are
+            questions no probability map can capture. It is probable that I am
+            collecting data on your ship placement right now.
+          </div>
+        </div>
+      </div>
+
+      <div class="ships-ref">
+        <div class="ships-ref-title">// Fleet Reference</div>
+        <div class="ship-row">
+          <div class="ship-name">Carrier</div>
+          <div class="ship-size">5</div>
+          <div class="ship-vis">
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+          </div>
+        </div>
+        <div class="ship-row">
+          <div class="ship-name">Battleship</div>
+          <div class="ship-size">4</div>
+          <div class="ship-vis">
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+          </div>
+        </div>
+        <div class="ship-row">
+          <div class="ship-name">Cruiser</div>
+          <div class="ship-size">3</div>
+          <div class="ship-vis">
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+          </div>
+        </div>
+        <div class="ship-row">
+          <div class="ship-name">Submarine</div>
+          <div class="ship-size">3</div>
+          <div class="ship-vis">
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+          </div>
+        </div>
+        <div class="ship-row">
+          <div class="ship-name">Destroyer</div>
+          <div class="ship-size">2</div>
+          <div class="ship-vis">
+            <div class="ship-cell"></div>
+            <div class="ship-cell"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAY PAGE -->
+    <div id="page-play" class="page active">
+      <!-- LEFT: GRID -->
+      <div class="left-panel">
+        <div class="grid-header">
+          <div class="grid-label">// ENEMY WATERS</div>
+          <div id="mode-indicator" class="mode-indicator hunt">
+            <div class="mode-indicator-dot"></div>
+            HUNT MODE
+          </div>
+          <div class="shot-count" id="shot-count">SHOTS: 0</div>
+          <div
+            style="
+              font-size: 9px;
+              color: var(--text-dim);
+              letter-spacing: 1px;
+              margin-left: auto;
+              opacity: 0.5;
+            "
+          >
+            click fired cell to edit
+          </div>
+        </div>
+        <div class="grid-outer">
+          <div class="grid-col-labels" id="col-labels"></div>
+          <div class="grid-rows" id="grid-rows"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: INFO PANEL -->
+      <div class="right-panel">
+        <!-- Fleet Status -->
+        <div class="panel-section">
+          <div class="panel-section-title">// Fleet Status</div>
+          <div id="fleet-status"></div>
+        </div>
+
+        <!-- Best Move -->
+        <div class="panel-section">
+          <div class="panel-section-title">// Optimal Strike</div>
+          <div class="best-move-box">
+            <div class="best-move-coord" id="best-coord">—</div>
+            <div class="best-move-pct" id="best-pct">Calculating…</div>
+            <div class="best-move-reason" id="best-reason"></div>
+          </div>
+        </div>
+
+        <!-- Hover Info -->
+        <div class="hover-info">
+          <div class="panel-section-title">// Cell Analysis</div>
+          <div id="hover-content">
+            <div class="hover-empty">
+              Hover over any cell on the grid to analyse its probability and see
+              how it compares to the optimal strike.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Dialog -->
+    <div class="confirm-overlay" id="confirm-overlay">
+      <div class="confirm-box">
+        <div class="confirm-coord" id="confirm-coord">A1</div>
+        <div class="confirm-label" id="confirm-label">
+          Result at this position?
+        </div>
+        <div class="confirm-btns">
+          <button class="confirm-btn btn-hit" onclick="recordShot('hit')">
+            💥 HIT
+          </button>
+          <button class="confirm-btn btn-miss" onclick="recordShot('miss')">
+            〇 MISS
+          </button>
+        </div>
+        <div
+          class="confirm-btns"
+          id="confirm-sunk-row"
+          style="display: none; margin-top: 8px"
+        >
+          <button
+            class="confirm-btn btn-sunk"
+            onclick="recordShot('sunk')"
+            style="width: 100%"
+          >
+            🔱 SUNK — Ship Destroyed
+          </button>
+        </div>
+        <button class="confirm-btn btn-cancel" onclick="closeConfirm()">
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- Win Overlay -->
+    <div class="win-overlay" id="win-overlay">
+      <div class="win-title">VICTORY</div>
+      <div class="win-sub">All enemy vessels destroyed</div>
+      <div class="win-stats" id="win-stats"></div>
+      <button class="win-btn" onclick="resetGame()">New Game</button>
+    </div>
+
+    <!-- Undo Overlay -->
+    <div class="confirm-overlay" id="undo-overlay">
+      <div class="confirm-box">
+        <div class="confirm-coord" id="undo-coord">A1</div>
+        <div class="confirm-label" id="undo-current-label">Currently: MISS</div>
+        <div
+          style="
+            font-size: 11px;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+          "
+        >
+          Change this cell to:
+        </div>
+        <div class="confirm-btns" id="undo-btns"></div>
+        <button class="confirm-btn btn-cancel" onclick="closeUndo()">
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- Sunk Toast -->
+    <div class="sunk-toast" id="sunk-toast"></div>
+
+    <!-- PLACEMENT PAGE -->
+    <div id="page-place" class="page">
+      <div class="place-left">
+        <div class="place-grid-header">
+          <div class="grid-label">// YOUR WATERS</div>
+          <div
+            id="place-status-label"
+            style="font-size: 11px; color: var(--amber); letter-spacing: 1px"
+          >
+            Select a ship to place
+          </div>
+          <button
+            class="heatmap-toggle-btn on"
+            id="threat-toggle"
+            onclick="toggleThreatMap()"
+          >
+            THREAT MAP: ON
+          </button>
+        </div>
+        <div class="grid-outer">
+          <div class="grid-col-labels" id="place-col-labels"></div>
+          <div class="grid-rows" id="place-grid-rows"></div>
+        </div>
+      </div>
+
+      <div class="place-right">
+        <div class="ship-queue">
+          <div
+            class="panel-section-title"
+            style="padding: 0; margin-bottom: 12px"
+          >
+            // Place Your Fleet
+          </div>
+          <div id="ship-queue-list"></div>
+        </div>
+
+        <div class="orient-toggle">
+          <div
+            style="
+              font-size: 10px;
+              letter-spacing: 2px;
+              color: var(--text-dim);
+              text-transform: uppercase;
+              margin-right: 4px;
+            "
+          >
+            DIR:
+          </div>
+          <button
+            class="orient-btn active-orient"
+            id="orient-h"
+            onclick="setOrientation('H')"
+          >
+            ━ Horiz
+          </button>
+          <button
+            class="orient-btn"
+            id="orient-v"
+            onclick="setOrientation('V')"
+          >
+            ┃ Vert
+          </button>
+          <div
+            style="
+              font-size: 10px;
+              color: var(--text-dim);
+              letter-spacing: 1px;
+              margin-left: 8px;
+            "
+          >
+            [R]
+          </div>
+        </div>
+
+        <div class="place-advice">
+          <div class="panel-section-title" style="padding: 0">
+            // Placement Advisor
+          </div>
+          <div id="place-advice-content">
+            <div class="advice-card">
+              <div class="advice-tag">Getting Started</div>
+              <div class="advice-text">
+                Click a ship from the list to select it, then click on the grid
+                to place it. Press R or use the direction buttons to rotate.
+              </div>
+            </div>
+            <div class="advice-card warn">
+              <div class="advice-tag">Corner Strategy</div>
+              <div class="advice-text">
+                Against a probability-search opponent, corners and edges are
+                statistically safest. The center of the board has the highest
+                early-game probability density.
+              </div>
+            </div>
+            <div class="advice-card">
+              <div class="advice-tag">Spread vs. Cluster</div>
+              <div class="advice-text">
+                Spreading ships across the board forces the opponent to cover
+                more area. Clustering ships risks one area being saturated with
+                shots after a single hit.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="place-actions">
+          <button
+            class="place-btn primary"
+            id="place-done-btn"
+            onclick="finalizePlacement()"
+            disabled
+          >
+            ✓ Done — Start Attacking
+          </button>
+          <button class="place-btn secondary" onclick="resetPlacement()">
+            ↺ Clear All Ships
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ════════════════════════════════════════════
+      // GAME STATE
+      // ════════════════════════════════════════════
+      const SHIPS = [
+        { name: "Carrier", size: 5 },
+        { name: "Battleship", size: 4 },
+        { name: "Cruiser", size: 3 },
+        { name: "Submarine", size: 3 },
+        { name: "Destroyer", size: 2 },
+      ];
+
+      const ROWS = 10,
+        COLS = 10;
+      const ROW_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+      const COL_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+
+      let state = {};
+
+      function initState() {
+        return {
+          grid: Array.from({ length: ROWS }, () => Array(COLS).fill("unknown")),
+          shots: 0,
+          ships: SHIPS.map((s) => ({ ...s, hits: 0, sunk: false })),
+          pendingCell: null,
+          hoverCell: null,
+          probs: null,
+          bestCell: null,
+          bestCells: [],
+          mode: "hunt",
+          hitCells: [], // unsunk hit cells
+          targetAxis: null, // 'H' | 'V' | null
+          sunkGroups: [], // array of cell arrays, one per sunk ship
+        };
+      }
+
+      // ════════════════════════════════════════════
+      // PROBABILITY ENGINE
+      // ════════════════════════════════════════════
+
+      // Returns the active hit cluster (connected component of hits).
+      // If multiple clusters exist (rare edge case), returns the largest.
+      function getActiveCluster() {
+        const hits = state.hitCells;
+        if (hits.length === 0) return [];
+
+        const visited = new Set();
+        let largest = [];
+
+        for (const [sr, sc] of hits) {
+          const key = `${sr},${sc}`;
+          if (visited.has(key)) continue;
+          const comp = [];
+          const queue = [[sr, sc]];
+          while (queue.length) {
+            const [cr, cc] = queue.shift();
+            const k = `${cr},${cc}`;
+            if (visited.has(k)) continue;
+            visited.add(k);
+            comp.push([cr, cc]);
+            for (const [dr, dc] of [
+              [-1, 0],
+              [1, 0],
+              [0, -1],
+              [0, 1],
+            ]) {
+              const nr = cr + dr,
+                nc = cc + dc;
+              if (
+                hits.some(([hr, hc]) => hr === nr && hc === nc) &&
+                !visited.has(`${nr},${nc}`)
+              )
+                queue.push([nr, nc]);
+            }
+          }
+          if (comp.length > largest.length) largest = comp;
+        }
+        return largest;
+      }
+
+      // Detect if a cluster is collinear and return axis ('H'|'V'|null)
+      function detectAxis(cluster) {
+        if (cluster.length < 2) return null;
+        const allSameRow = cluster.every(([r]) => r === cluster[0][0]);
+        const allSameCol = cluster.every(([, c]) => c === cluster[0][1]);
+        if (allSameRow) return "H";
+        if (allSameCol) return "V";
+        return null; // L-shape: shouldn't happen in real Battleship
+      }
+
+      function computeProbabilities() {
+        const g = state.grid;
+        const counts = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        const remaining = state.ships.filter((s) => !s.sunk);
+        const remainingSizes = remaining.map((s) => s.size);
+
+        const cluster = getActiveCluster();
+        const inTarget = cluster.length > 0;
+
+        if (inTarget) {
+          // ── TARGET MODE ──────────────────────────────────────────────
+          // Determine locked axis (if 2+ hits share a row or column)
+          const axis = detectAxis(cluster);
+          state.targetAxis = axis;
+
+          // For each remaining ship size, count placements that:
+          //   1. Cover EVERY cell in the active cluster
+          //   2. Don't cross any miss
+          //   3. If axis is locked, only try that direction
+          for (const size of remainingSizes) {
+            const directions = axis ? [axis] : ["H", "V"];
+            for (const dir of directions) {
+              const span =
+                dir === "H"
+                  ? { rSpan: 1, cSpan: size }
+                  : { rSpan: size, cSpan: 1 };
+
+              for (let r = 0; r <= ROWS - span.rSpan; r++) {
+                for (let c = 0; c <= COLS - span.cSpan; c++) {
+                  if (canPlaceTarget(g, r, c, size, dir, cluster)) {
+                    for (let k = 0; k < size; k++) {
+                      const rr = dir === "V" ? r + k : r;
+                      const cc = dir === "H" ? c + k : c;
+                      counts[rr][cc]++;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // Zero known cells — we want the NEXT unknown cell to shoot
+          for (let r = 0; r < ROWS; r++)
+            for (let c = 0; c < COLS; c++)
+              if (g[r][c] !== "unknown") counts[r][c] = 0;
+        } else {
+          // ── HUNT MODE ────────────────────────────────────────────────
+          // Classic probability density: count all valid placements for all ships
+          state.targetAxis = null;
+          for (const size of remainingSizes) {
+            for (let r = 0; r < ROWS; r++) {
+              for (let c = 0; c <= COLS - size; c++) {
+                if (canPlaceHunt(g, r, c, size, "H")) {
+                  for (let k = 0; k < size; k++) counts[r][c + k]++;
+                }
+              }
+            }
+            for (let r = 0; r <= ROWS - size; r++) {
+              for (let c = 0; c < COLS; c++) {
+                if (canPlaceHunt(g, r, c, size, "V")) {
+                  for (let k = 0; k < size; k++) counts[r + k][c]++;
+                }
+              }
+            }
+          }
+          for (let r = 0; r < ROWS; r++)
+            for (let c = 0; c < COLS; c++)
+              if (g[r][c] !== "unknown") counts[r][c] = 0;
+        }
+
+        return counts;
+      }
+
+      // Hunt mode: placement is valid if no cell in the span is a miss
+      function canPlaceHunt(g, r, c, size, dir) {
+        for (let k = 0; k < size; k++) {
+          const rr = dir === "V" ? r + k : r;
+          const cc = dir === "H" ? c + k : c;
+          if (g[rr][cc] === "miss") return false;
+        }
+        return true;
+      }
+
+      // Target mode: placement must cover ALL cluster cells and not cross any miss
+      function canPlaceTarget(g, r, c, size, dir, cluster) {
+        const cells = [];
+        for (let k = 0; k < size; k++) {
+          const rr = dir === "V" ? r + k : r;
+          const cc = dir === "H" ? c + k : c;
+          if (g[rr][cc] === "miss") return false;
+          cells.push([rr, cc]);
+        }
+        // Every cluster cell must be covered by this placement
+        return cluster.every(([hr, hc]) =>
+          cells.some(([rr, cc]) => rr === hr && cc === hc),
+        );
+      }
+
+      function bestMove(probs) {
+        let best = -1,
+          bestR = -1,
+          bestC = -1;
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (probs[r][c] > best) {
+              best = probs[r][c];
+              bestR = r;
+              bestC = c;
+            }
+          }
+        }
+        return { r: bestR, c: bestC, score: best };
+      }
+
+      // Returns all cells tied at the maximum probability score
+      function bestMoves(probs) {
+        const mx = maxProb(probs);
+        if (mx === 0) return [];
+        const tied = [];
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (probs[r][c] === mx) tied.push({ r, c, score: mx });
+          }
+        }
+        return tied;
+      }
+
+      function maxProb(probs) {
+        let m = 0;
+        for (let r = 0; r < ROWS; r++)
+          for (let c = 0; c < COLS; c++) if (probs[r][c] > m) m = probs[r][c];
+        return m;
+      }
+
+      function scoreToPercent(score, max) {
+        if (max === 0) return 0;
+        return Math.round((score / max) * 100);
+      }
+
+      // ════════════════════════════════════════════
+      // DOM BUILDING
+      // ════════════════════════════════════════════
+      function buildGrid() {
+        const colLabels = document.getElementById("col-labels");
+        const gridRows = document.getElementById("grid-rows");
+        colLabels.innerHTML = "";
+        gridRows.innerHTML = "";
+
+        COL_LABELS.forEach((l) => {
+          const d = document.createElement("div");
+          d.className = "grid-col-label";
+          d.textContent = l;
+          colLabels.appendChild(d);
+        });
+
+        for (let r = 0; r < ROWS; r++) {
+          const row = document.createElement("div");
+          row.className = "grid-row";
+          const label = document.createElement("div");
+          label.className = "grid-row-label";
+          label.textContent = ROW_LABELS[r];
+          row.appendChild(label);
+
+          for (let c = 0; c < COLS; c++) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.id = `cell-${r}-${c}`;
+            cell.innerHTML = `<div class="cell-heat-label" id="heat-${r}-${c}"></div>`;
+            cell.addEventListener("click", () => {
+              if (state.grid[r][c] !== "unknown") onCellRightClick(r, c);
+              else onCellClick(r, c);
+            });
+            cell.addEventListener("mouseenter", () => onCellHover(r, c));
+            cell.addEventListener("mouseleave", () => onCellLeave());
+            row.appendChild(cell);
+          }
+          gridRows.appendChild(row);
+        }
+      }
+
+      function buildFleetStatus() {
+        const el = document.getElementById("fleet-status");
+        el.innerHTML = "";
+        state.ships.forEach((ship, i) => {
+          const row = document.createElement("div");
+          row.className = "fleet-ship";
+          row.id = `fleet-${i}`;
+
+          const nameEl = document.createElement("div");
+          nameEl.className = `fleet-ship-name ${ship.sunk ? "sunk" : "active"}`;
+          nameEl.textContent = ship.name;
+
+          const hp = document.createElement("div");
+          hp.className = "fleet-ship-hp";
+          for (let k = 0; k < ship.size; k++) {
+            const b = document.createElement("div");
+            const hitCount = ship.hits;
+            b.className = `hp-block ${ship.sunk ? "dead" : k < hitCount ? "hit-hp" : "alive"}`;
+            hp.appendChild(b);
+          }
+
+          row.appendChild(nameEl);
+          row.appendChild(hp);
+          el.appendChild(row);
+        });
+      }
+
+      // ════════════════════════════════════════════
+      // UPDATE DISPLAY
+      // ════════════════════════════════════════════
+      function updateAll() {
+        const probs = computeProbabilities();
+        state.probs = probs;
+        const mx = maxProb(probs);
+        const best = bestMove(probs); // single best for hover comparison
+        const bests = bestMoves(probs); // all tied-best for display
+        state.bestCell = best;
+        state.bestCells = bests;
+
+        // Update mode
+        state.mode = state.hitCells.length > 0 ? "target" : "hunt";
+        const modeEl = document.getElementById("mode-indicator");
+        modeEl.className = `mode-indicator ${state.mode}`;
+        const axisLabel = state.targetAxis ? ` [${state.targetAxis}]` : "";
+        modeEl.innerHTML = `<div class="mode-indicator-dot"></div> ${state.mode.toUpperCase()} MODE${axisLabel}`;
+
+        // Shot count
+        document.getElementById("shot-count").textContent =
+          `SHOTS: ${state.shots}`;
+
+        // Build a set of best cell keys for fast lookup
+        const bestSet = new Set(bests.map((b) => `${b.r},${b.c}`));
+
+        // Build sunk cell lookup: cellKey -> groupIndex
+        const sunkCellMap = new Map();
+        state.sunkGroups.forEach((group, gi) => {
+          group.forEach(([gr, gc]) => sunkCellMap.set(`${gr},${gc}`, gi));
+        });
+
+        // Update cells
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const cell = document.getElementById(`cell-${r}-${c}`);
+            const heatEl = document.getElementById(`heat-${r}-${c}`);
+            const isBest = bestSet.has(`${r},${c}`);
+            const cellState = state.grid[r][c];
+            const sunkGroupIdx = sunkCellMap.get(`${r},${c}`);
+            const isSunkCell = sunkGroupIdx !== undefined;
+
+            cell.className = "cell";
+            cell.removeAttribute("style");
+            // Always remove stale marker so undo re-renders correctly
+            const oldMarker = cell.querySelector(".cell-marker");
+            if (oldMarker) oldMarker.remove();
+
+            if (cellState === "hit") {
+              cell.classList.add("hit");
+              heatEl.textContent = "";
+              const m = document.createElement("div");
+              m.className = "cell-marker";
+              m.textContent = "✕";
+              m.style.color = "#ff6060";
+              cell.appendChild(m);
+
+              // Apply sunk outline borders
+              if (isSunkCell) {
+                cell.classList.add("sunk-ship");
+                const group = state.sunkGroups[sunkGroupIdx];
+                const groupSet = new Set(
+                  group.map(([gr, gc]) => `${gr},${gc}`),
+                );
+                // Top border if no group neighbor above
+                if (!groupSet.has(`${r - 1},${c}`))
+                  cell.classList.add("sunk-top");
+                // Bottom border if no group neighbor below
+                if (!groupSet.has(`${r + 1},${c}`))
+                  cell.classList.add("sunk-bottom");
+                // Left border if no group neighbor to left
+                if (!groupSet.has(`${r},${c - 1}`))
+                  cell.classList.add("sunk-left");
+                // Right border if no group neighbor to right
+                if (!groupSet.has(`${r},${c + 1}`))
+                  cell.classList.add("sunk-right");
+              }
+            } else if (cellState === "miss") {
+              cell.classList.add("miss");
+              heatEl.textContent = "";
+              const m = document.createElement("div");
+              m.className = "cell-marker";
+              m.textContent = "·";
+              m.style.color = "#b89000";
+              cell.appendChild(m);
+            } else {
+              const score = probs[r][c];
+              const pct = mx > 0 ? Math.round((score / mx) * 100) : 0;
+
+              if (isBest && score > 0) {
+                cell.classList.add("suggested");
+                heatEl.textContent = "";
+              } else {
+                // Inline heat color: interpolate dark→blue based on pct
+                const t = pct / 100;
+                const bgR = Math.round(4 + t * (26 - 4));
+                const bgG = Math.round(11 + t * (85 - 11));
+                const bgB = Math.round(20 + t * (128 - 20));
+                const bdR = Math.round(12 + t * (13 - 12));
+                const bdG = Math.round(32 + t * (106 - 32));
+                const bdB = Math.round(48 + t * (173 - 48));
+                cell.style.background = `rgb(${bgR},${bgG},${bgB})`;
+                cell.style.borderColor = `rgb(${bdR},${bdG},${bdB})`;
+                if (pct > 5) heatEl.textContent = pct + "%";
+                else heatEl.textContent = "";
+              }
+            }
+          }
+        }
+
+        // Best move panel — show all tied suggestions
+        if (bests.length > 0 && bests[0].score > 0) {
+          const pct = scoreToPercent(bests[0].score, mx);
+          if (bests.length === 1) {
+            const coord = ROW_LABELS[bests[0].r] + COL_LABELS[bests[0].c];
+            document.getElementById("best-coord").textContent = coord;
+            document.getElementById("best-pct").textContent =
+              `${pct}% ship probability`;
+          } else {
+            const coords = bests
+              .map((b) => ROW_LABELS[b.r] + COL_LABELS[b.c])
+              .join("  ");
+            document.getElementById("best-coord").innerHTML = bests
+              .map(
+                (b) =>
+                  `<span style="margin-right:8px">${ROW_LABELS[b.r]}${COL_LABELS[b.c]}</span>`,
+              )
+              .join("");
+            document.getElementById("best-coord").style.fontSize =
+              bests.length > 4 ? "16px" : "20px";
+            document.getElementById("best-pct").textContent =
+              `${bests.length} equally optimal moves · ${pct}% each`;
+          }
+          document.getElementById("best-reason").textContent = bestMoveReason(
+            best,
+            probs,
+            mx,
+          );
+        } else {
+          document.getElementById("best-coord").textContent = "—";
+          document.getElementById("best-pct").textContent =
+            "No moves available";
+          document.getElementById("best-reason").textContent = "";
+        }
+
+        buildFleetStatus();
+
+        // Refresh hover if active
+        if (state.hoverCell) {
+          const [hr, hc] = state.hoverCell;
+          showHoverInfo(hr, hc, probs, mx, best);
+        }
+      }
+
+      function bestMoveReason(best, probs, mx) {
+        const { r, c, score } = best;
+        const mode = state.mode;
+        const pct = scoreToPercent(score, mx);
+        const remaining = state.ships.filter((s) => !s.sunk);
+        const cluster = getActiveCluster();
+
+        if (mode === "target") {
+          const axis = state.targetAxis;
+          const clusterSize = cluster.length;
+
+          if (axis === "H") {
+            // Find extents of the horizontal run
+            const cols = cluster.map(([, cc]) => cc).sort((a, b) => a - b);
+            const minC = cols[0],
+              maxC = cols[cols.length - 1];
+            const row = cluster[0][0];
+            const leftEnd = c < minC ? " (left end)" : "";
+            const rightEnd = c > maxC ? " (right end)" : "";
+            return `Axis locked HORIZONTAL — ${clusterSize} hit(s) share row ${ROW_LABELS[row]}. Probing the endpoints of the run${leftEnd || rightEnd}. Only horizontal placements covering the full cluster are valid; this endpoint has the highest overlap count (${pct}%).`;
+          }
+
+          if (axis === "V") {
+            const rows = cluster.map(([rr]) => rr).sort((a, b) => a - b);
+            const minR = rows[0],
+              maxR = rows[rows.length - 1];
+            const col = cluster[0][1];
+            return `Axis locked VERTICAL — ${clusterSize} hit(s) share column ${COL_LABELS[col]}. Extending the run up or down. Only vertical placements covering the full cluster are valid; this endpoint has the highest overlap count (${pct}%).`;
+          }
+
+          // Single hit — probe all 4 directions
+          const adjacent = [
+            [r - 1, c],
+            [r + 1, c],
+            [r, c - 1],
+            [r, c + 1],
+          ].filter(
+            ([rr, cc]) =>
+              rr >= 0 &&
+              rr < ROWS &&
+              cc >= 0 &&
+              cc < COLS &&
+              state.grid[rr][cc] === "unknown",
+          );
+          return `Single hit active — probing all 4 adjacent directions. This cell (${ROW_LABELS[r]}${COL_LABELS[c]}) has the highest number of ship placements that cover the hit across all ${remaining.length} remaining ship(s). A hit here establishes axis; a miss eliminates that direction entirely.`;
+        }
+
+        // Hunt mode
+        const minSize = Math.min(...remaining.map((s) => s.size));
+        const names = remaining.map((s) => s.name);
+        return `Hunt mode — no active hits. This cell sits at the highest-density intersection of all valid placements across ${remaining.length} remaining ship(s) (${names.slice(0, 2).join(", ")}${names.length > 2 ? "…" : ""}). ${pct}% relative overlap. Shooting here eliminates the maximum number of board configurations regardless of outcome.`;
+      }
+
+      // ════════════════════════════════════════════
+      // INTERACTIONS
+      // ════════════════════════════════════════════
+      function onCellClick(r, c) {
+        if (state.grid[r][c] !== "unknown") return;
+        state.pendingCell = [r, c];
+        const coord = ROW_LABELS[r] + COL_LABELS[c];
+        document.getElementById("confirm-coord").textContent = coord;
+
+        // Show SUNK only in target mode AND if cluster+1 >= smallest remaining unsunk ship
+        const inTarget = state.hitCells.length > 0;
+        let showSunk = false;
+        if (inTarget) {
+          const cluster = getActiveCluster();
+          const clusterSizeAfter = cluster.length + 1; // +1 for this new shot if it's a hit
+          const unsunkSizes = state.ships
+            .filter((s) => !s.sunk)
+            .map((s) => s.size);
+          const minUnsunk = Math.min(...unsunkSizes);
+          showSunk = clusterSizeAfter >= minUnsunk;
+        }
+        document.getElementById("confirm-sunk-row").style.display = showSunk
+          ? "flex"
+          : "none";
+
+        document.getElementById("confirm-overlay").classList.add("visible");
+
+        // Ping animation
+        const cell = document.getElementById(`cell-${r}-${c}`);
+        const ping = document.createElement("div");
+        ping.className = "ping";
+        cell.appendChild(ping);
+        setTimeout(() => ping.remove(), 700);
+      }
+
+      function closeConfirm() {
+        document.getElementById("confirm-overlay").classList.remove("visible");
+        state.pendingCell = null;
+      }
+
+      function recordShot(result) {
+        document.getElementById("confirm-overlay").classList.remove("visible");
+        if (!state.pendingCell) return;
+
+        const [r, c] = state.pendingCell;
+        state.shots++;
+        state.pendingCell = null;
+
+        if (result === "sunk") {
+          // Mark this cell as a hit
+          state.grid[r][c] = "hit";
+          state.hitCells.push([r, c]);
+
+          // Grab the full cluster (including this new cell)
+          const cluster = getActiveCluster();
+
+          // Match to smallest unsunk ship that fits the cluster size
+          const unsunk = state.ships
+            .filter((s) => !s.sunk)
+            .sort(
+              (a, b) =>
+                Math.abs(a.size - cluster.length) -
+                Math.abs(b.size - cluster.length),
+            );
+          if (unsunk.length > 0) {
+            const ship = unsunk[0];
+            ship.sunk = true;
+            ship.hits = ship.size;
+            showSunkToast(ship.name);
+          }
+
+          // Store the cluster as a sunk group and clear active hits
+          state.sunkGroups.push([...cluster]);
+          state.hitCells = [];
+        } else if (result === "hit") {
+          state.grid[r][c] = "hit";
+          state.hitCells.push([r, c]);
+          autoDetectSunk();
+        } else {
+          // miss
+          state.grid[r][c] = "miss";
+        }
+
+        updateAll();
+        checkWin();
+      }
+
+      function trySinkShip() {
+        // We ask the user separately; they use the fleet panel's HP to track.
+        // But we can auto-detect: if a connected cluster of hits equals a remaining ship size,
+        // ask them to mark it sunk. For simplicity, we allow manual sinking via fleet clicks.
+        // Auto-check: find connected hit clusters
+        autoDetectSunk();
+      }
+
+      function autoDetectSunk() {
+        const hits = state.hitCells;
+        if (hits.length === 0) return;
+
+        // Find connected components
+        const visited = new Set();
+        const components = [];
+
+        for (const [r, c] of hits) {
+          const key = `${r},${c}`;
+          if (visited.has(key)) continue;
+          // BFS
+          const comp = [];
+          const queue = [[r, c]];
+          while (queue.length) {
+            const [cr, cc] = queue.shift();
+            const k = `${cr},${cc}`;
+            if (visited.has(k)) continue;
+            visited.add(k);
+            comp.push([cr, cc]);
+            for (const [dr, dc] of [
+              [-1, 0],
+              [1, 0],
+              [0, -1],
+              [0, 1],
+            ]) {
+              const nr = cr + dr,
+                nc = cc + dc;
+              const nk = `${nr},${nc}`;
+              if (
+                !visited.has(nk) &&
+                hits.some(([hr, hc]) => hr === nr && hc === nc)
+              ) {
+                queue.push([nr, nc]);
+              }
+            }
+          }
+          components.push(comp);
+        }
+
+        // Find remaining unsunk ships sorted by size
+        const unsunk = state.ships
+          .filter((s) => !s.sunk)
+          .sort((a, b) => b.size - a.size);
+
+        // Match components to ship sizes
+        for (const comp of components) {
+          for (const ship of unsunk) {
+            if (comp.length === ship.size) {
+              // Check if surrounded by misses or edges (confirming sunk)
+              const isSunk = isSurrounded(comp);
+              if (isSunk) {
+                ship.sunk = true;
+                ship.hits = ship.size;
+                state.hitCells = state.hitCells.filter(
+                  ([hr, hc]) =>
+                    !comp.some(([cr, cc]) => cr === hr && cc === hc),
+                );
+                state.sunkGroups.push([...comp]);
+                showSunkToast(ship.name);
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      function isSurrounded(comp) {
+        // A ship cluster is "confirmed sunk" if all adjacent cells are misses or out of bounds
+        for (const [r, c] of comp) {
+          for (const [dr, dc] of [
+            [-1, 0],
+            [1, 0],
+            [0, -1],
+            [0, 1],
+          ]) {
+            const nr = r + dr,
+              nc = c + dc;
+            if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+            const cellState = state.grid[nr][nc];
+            // If adjacent cell is unknown or hit (but not in this cluster), not surrounded
+            if (cellState === "unknown") return false;
+            if (
+              cellState === "hit" &&
+              !comp.some(([cr, cc]) => cr === nr && cc === nc)
+            )
+              return false;
+          }
+        }
+        return true;
+      }
+
+      function showSunkToast(name) {
+        const toast = document.getElementById("sunk-toast");
+        toast.textContent = `💥 ${name} Sunk!`;
+        toast.classList.add("visible");
+        setTimeout(() => toast.classList.remove("visible"), 2800);
+      }
+
+      function onCellHover(r, c) {
+        state.hoverCell = [r, c];
+        if (!state.probs) return;
+        const mx = maxProb(state.probs);
+        showHoverInfo(r, c, state.probs, mx, state.bestCell);
+      }
+
+      function onCellLeave() {
+        state.hoverCell = null;
+        document.getElementById("hover-content").innerHTML =
+          '<div class="hover-empty">Hover over any cell on the grid to analyse its probability and see how it compares to the optimal strike.</div>';
+      }
+
+      function showHoverInfo(r, c, probs, mx, best) {
+        const coord = ROW_LABELS[r] + COL_LABELS[c];
+        const cellState = state.grid[r][c];
+        const score = probs[r][c];
+        const pct = scoreToPercent(score, mx);
+        const bestCellSet = new Set(
+          (state.bestCells || []).map((b) => `${b.r},${b.c}`),
+        );
+        const isBest = bestCellSet.has(`${r},${c}`);
+
+        const el = document.getElementById("hover-content");
+
+        if (cellState === "hit") {
+          el.innerHTML = `<div class="hover-coord">${coord}</div><div style="color:var(--red);font-size:14px;margin-top:8px">HIT — already fired</div>`;
+          return;
+        }
+        if (cellState === "miss") {
+          el.innerHTML = `<div class="hover-coord">${coord}</div><div style="color:var(--miss);font-size:14px;margin-top:8px;color:#2a6080">MISS — already fired</div>`;
+          return;
+        }
+
+        let comparison = "";
+        if (isBest) {
+          const tieCount = (state.bestCells || []).length;
+          const tieNote =
+            tieCount > 1 ? ` One of ${tieCount} equally optimal moves.` : "";
+          comparison = `<div class="hover-comparison" style="color:var(--green)">✓ This is an optimal strike.${tieNote} ${state.mode === "target" ? "It covers the active hit cluster with the most valid ship placements." : "It maximises placement overlap across all remaining ships."}</div>`;
+        } else if (best && best.score > 0) {
+          const bestCoord = ROW_LABELS[best.r] + COL_LABELS[best.c];
+          const bestPct = scoreToPercent(best.score, mx);
+          const diff = bestPct - pct;
+          let reason = "";
+          const axis = state.targetAxis;
+          if (state.mode === "target") {
+            if (score === 0) {
+              reason = `This cell has 0 probability in Target Mode — no valid placement for any remaining ship can simultaneously cover this cell AND all active hit(s). Shooting here would waste a turn. ${bestCoord} directly extends the known hit cluster.`;
+            } else if (axis) {
+              reason = `Axis is locked ${axis === "H" ? "HORIZONTAL" : "VERTICAL"}. ${bestCoord} (${bestPct}%) is the higher-scoring endpoint of the hit run — it eliminates ${diff}% more placement possibilities than this cell.`;
+            } else {
+              reason = `${bestCoord} (${bestPct}%) is adjacent to the active hit and overlaps ${diff}% more valid ship placements. In Target Mode only placements covering all hit cells count, so cells that extend the cluster outrank others.`;
+            }
+          } else {
+            reason = `${bestCoord} (${bestPct}%) overlaps ${diff}% more ship placement combinations. ${pct < 15 ? "This cell has low coverage — few ship configurations can reach here, making it a poor information gain per shot." : "The optimal cell sits at a higher-density intersection across multiple ships and orientations."}`;
+          }
+          comparison = `<div class="hover-comparison"><span style="color:var(--amber)">Optimal: ${bestCoord} (${bestPct}%)</span><br><br>${reason}</div>`;
+        }
+
+        el.innerHTML = `
+    <div class="hover-coord">${coord}</div>
+    <div class="hover-pct">${pct}%</div>
+    <div class="hover-bar"><div class="hover-bar-fill" style="width:${pct}%"></div></div>
+    <div style="font-size:10px;color:var(--text-dim);letter-spacing:1px;flex-shrink:0">SHIP PROBABILITY</div>
+    ${comparison}
+  `;
+      }
+
+      function onCellRightClick(r, c) {
+        const cellState = state.grid[r][c];
+        if (cellState === "unknown") return; // nothing to undo
+
+        const coord = ROW_LABELS[r] + COL_LABELS[c];
+        document.getElementById("undo-coord").textContent = coord;
+        document.getElementById("undo-current-label").textContent =
+          `Currently: ${cellState === "hit" ? "💥 HIT" : "〇 MISS"}`;
+
+        // Build change buttons — show the other option(s)
+        const btns = document.getElementById("undo-btns");
+        btns.innerHTML = "";
+
+        if (cellState === "miss") {
+          const b = document.createElement("button");
+          b.className = "confirm-btn btn-hit";
+          b.textContent = "💥 Change to HIT";
+          b.onclick = () => applyUndo(r, c, "hit");
+          btns.appendChild(b);
+        } else if (cellState === "hit") {
+          const b1 = document.createElement("button");
+          b1.className = "confirm-btn btn-miss";
+          b1.textContent = "〇 Change to MISS";
+          b1.onclick = () => applyUndo(r, c, "miss");
+          btns.appendChild(b1);
+        }
+
+        // Always offer clear (back to unknown)
+        const bClear = document.createElement("button");
+        bClear.className = "confirm-btn btn-cancel";
+        bClear.style.cssText =
+          "color:var(--text-dim);border-color:var(--border);margin-top:8px;width:100%";
+        bClear.textContent = "✕ Clear (undo shot)";
+        bClear.onclick = () => applyUndo(r, c, "unknown");
+        btns.appendChild(bClear);
+
+        document.getElementById("undo-overlay").classList.add("visible");
+      }
+
+      function applyUndo(r, c, newState) {
+        closeUndo();
+        const oldState = state.grid[r][c];
+
+        // Remove from hitCells if it was a hit
+        if (oldState === "hit") {
+          state.hitCells = state.hitCells.filter(
+            ([hr, hc]) => !(hr === r && hc === c),
+          );
+          // Remove from any sunkGroup
+          state.sunkGroups = state.sunkGroups
+            .map((g) => g.filter(([gr, gc]) => !(gr === r && gc === c)))
+            .filter((g) => g.length > 0);
+          // Un-sunk the ship that owned this cell if it was sunk
+          // Find ship by matching sunk group size against unsunk ships
+          const affectedShip = state.ships.find((s) => s.sunk && s.hits > 0);
+          if (affectedShip) {
+            affectedShip.sunk = false;
+            affectedShip.hits = Math.max(0, affectedShip.hits - 1);
+          }
+        }
+
+        if (newState === "unknown") {
+          state.grid[r][c] = "unknown";
+          state.shots = Math.max(0, state.shots - 1);
+          // Remove the visual marker
+          const cell = document.getElementById(`cell-${r}-${c}`);
+          const marker = cell.querySelector(".cell-marker");
+          if (marker) marker.remove();
+        } else {
+          state.grid[r][c] = newState;
+          if (newState === "hit") {
+            state.hitCells.push([r, c]);
+          }
+        }
+
+        updateAll();
+      }
+
+      function closeUndo() {
+        document.getElementById("undo-overlay").classList.remove("visible");
+      }
+
+      function checkWin() {
+        const allSunk = state.ships.every((s) => s.sunk);
+        if (allSunk) {
+          document.getElementById("win-stats").textContent =
+            `Fleet destroyed in ${state.shots} shots`;
+          document.getElementById("win-overlay").classList.add("visible");
+        }
+      }
+
+      function resetGame() {
+        document.getElementById("win-overlay").classList.remove("visible");
+        state = initState();
+        buildGrid();
+        buildFleetStatus();
+        updateAll();
+      }
+
+      // ════════════════════════════════════════════
+      // NAV
+      // ════════════════════════════════════════════
+      function showPage(name) {
+        document
+          .querySelectorAll(".page")
+          .forEach((p) => p.classList.remove("active"));
+        document
+          .querySelectorAll(".nav-btn")
+          .forEach((b) => b.classList.remove("active"));
+        document.getElementById(`page-${name}`).classList.add("active");
+        const navId =
+          name === "play"
+            ? "nav-play"
+            : name === "tips"
+              ? "nav-tips"
+              : "nav-place";
+        document.getElementById(navId).classList.add("active");
+      }
+
+      // ════════════════════════════════════════════
+      // PLACEMENT ENGINE
+      // ════════════════════════════════════════════
+      const PLACE_SHIPS = [
+        { name: "Carrier", size: 5 },
+        { name: "Battleship", size: 4 },
+        { name: "Cruiser", size: 3 },
+        { name: "Submarine", size: 3 },
+        { name: "Destroyer", size: 2 },
+      ];
+
+      let pState = {};
+
+      function initPlacement() {
+        pState = {
+          // 2D array: null or { shipIdx, part: 'body'|'end' }
+          grid: Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
+          ships: PLACE_SHIPS.map((s, i) => ({
+            ...s,
+            placed: false,
+            cells: [],
+          })),
+          selectedShip: null, // index into pState.ships
+          orientation: "H", // 'H' | 'V'
+          hoverCell: null,
+          threatMapOn: true,
+        };
+      }
+
+      function buildPlacementGrid() {
+        const colLabels = document.getElementById("place-col-labels");
+        const gridRows = document.getElementById("place-grid-rows");
+        colLabels.innerHTML = "";
+        gridRows.innerHTML = "";
+
+        COL_LABELS.forEach((l) => {
+          const d = document.createElement("div");
+          d.className = "grid-col-label";
+          d.textContent = l;
+          colLabels.appendChild(d);
+        });
+
+        for (let r = 0; r < ROWS; r++) {
+          const row = document.createElement("div");
+          row.className = "grid-row";
+          const label = document.createElement("div");
+          label.className = "grid-row-label";
+          label.textContent = ROW_LABELS[r];
+          row.appendChild(label);
+
+          for (let c = 0; c < COLS; c++) {
+            const cell = document.createElement("div");
+            cell.className = "pcell";
+            cell.id = `pcell-${r}-${c}`;
+            cell.addEventListener("click", () => onPlaceCellClick(r, c));
+            cell.addEventListener("mouseenter", () => onPlaceCellHover(r, c));
+            cell.addEventListener("mouseleave", () => onPlaceCellLeave());
+            cell.addEventListener("contextmenu", (e) => {
+              e.preventDefault();
+              setOrientation(pState.orientation === "H" ? "V" : "H");
+            });
+            row.appendChild(cell);
+          }
+          gridRows.appendChild(row);
+        }
+
+        // Keyboard shortcut for rotate
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "r" || e.key === "R") {
+            setOrientation(pState.orientation === "H" ? "V" : "H");
+          }
+        });
+      }
+
+      function buildShipQueue() {
+        const list = document.getElementById("ship-queue-list");
+        list.innerHTML = "";
+        pState.ships.forEach((ship, i) => {
+          const item = document.createElement("div");
+          item.className = `ship-queue-item${ship.placed ? " placed-ship" : ""}${pState.selectedShip === i && !ship.placed ? " active-ship" : ""}`;
+          item.id = `sq-${i}`;
+
+          const nameEl = document.createElement("div");
+          nameEl.className = "ship-queue-name";
+          nameEl.textContent = ship.name;
+
+          const blocks = document.createElement("div");
+          blocks.className = "ship-queue-blocks";
+          for (let k = 0; k < ship.size; k++) {
+            const b = document.createElement("div");
+            b.className = `sq-block${ship.placed ? " placed-sq" : ""}`;
+            blocks.appendChild(b);
+          }
+
+          const status = document.createElement("div");
+          status.className = `ship-queue-status${ship.placed ? " ok" : ""}`;
+          status.textContent = ship.placed ? "✓ PLACED" : `${ship.size} cells`;
+
+          if (!ship.placed) {
+            item.addEventListener("click", () => selectShip(i));
+          } else {
+            // Click placed ship to remove it
+            item.title = "Click to remove";
+            item.style.cursor = "pointer";
+            item.addEventListener("click", () => removeShip(i));
+          }
+
+          item.appendChild(nameEl);
+          item.appendChild(blocks);
+          item.appendChild(status);
+          list.appendChild(item);
+        });
+      }
+
+      function selectShip(idx) {
+        if (pState.ships[idx].placed) return;
+        pState.selectedShip = idx;
+        buildShipQueue();
+        updatePlaceStatusLabel();
+        if (pState.hoverCell) refreshPlacePreview(...pState.hoverCell);
+      }
+
+      function setOrientation(dir) {
+        pState.orientation = dir;
+        document.getElementById("orient-h").className =
+          `orient-btn${dir === "H" ? " active-orient" : ""}`;
+        document.getElementById("orient-v").className =
+          `orient-btn${dir === "V" ? " active-orient" : ""}`;
+        if (pState.hoverCell) refreshPlacePreview(...pState.hoverCell);
+      }
+
+      function getPlacementCells(r, c, size, dir) {
+        const cells = [];
+        for (let k = 0; k < size; k++) {
+          const rr = dir === "V" ? r + k : r;
+          const cc = dir === "H" ? c + k : c;
+          // Always push — even out-of-bounds, clamped for display purposes
+          cells.push([Math.min(rr, ROWS - 1), Math.min(cc, COLS - 1)]);
+        }
+        return cells;
+      }
+
+      // Check if placement is truly valid (in bounds + no overlap)
+      function isPlacementInBounds(r, c, size, dir) {
+        for (let k = 0; k < size; k++) {
+          const rr = dir === "V" ? r + k : r;
+          const cc = dir === "H" ? c + k : c;
+          if (rr >= ROWS || cc >= COLS) return false;
+        }
+        return true;
+      }
+
+      function isPlacementValid(cells, r, c, size, dir, excludeShipIdx = null) {
+        if (!isPlacementInBounds(r, c, size, dir)) return false;
+        for (const [rr, cc] of cells) {
+          const occupant = pState.grid[rr][cc];
+          if (occupant !== null && occupant.shipIdx !== excludeShipIdx)
+            return false;
+        }
+        return true;
+      }
+
+      function clearPreview() {
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const cell = document.getElementById(`pcell-${r}-${c}`);
+            cell.classList.remove("preview", "preview-bad");
+          }
+        }
+      }
+
+      function refreshPlacePreview(r, c) {
+        clearPreview();
+        if (pState.selectedShip === null) return;
+        const ship = pState.ships[pState.selectedShip];
+        if (ship.placed) return;
+
+        const cells = getPlacementCells(r, c, ship.size, pState.orientation);
+        const valid = isPlacementValid(
+          cells,
+          r,
+          c,
+          ship.size,
+          pState.orientation,
+        );
+        const cls = valid ? "preview" : "preview-bad";
+        // Always render — even clamped/invalid cells show red so ship doesn't vanish
+        cells.forEach(([rr, cc]) => {
+          document.getElementById(`pcell-${rr}-${cc}`).classList.add(cls);
+        });
+      }
+
+      function onPlaceCellHover(r, c) {
+        pState.hoverCell = [r, c];
+        refreshPlacePreview(r, c);
+        updatePlaceAdvice(r, c);
+      }
+
+      function onPlaceCellLeave() {
+        pState.hoverCell = null;
+        clearPreview();
+      }
+
+      function onPlaceCellClick(r, c) {
+        if (pState.selectedShip === null) return;
+        const ship = pState.ships[pState.selectedShip];
+        if (ship.placed) return;
+
+        const cells = getPlacementCells(r, c, ship.size, pState.orientation);
+        if (!isPlacementValid(cells, r, c, ship.size, pState.orientation))
+          return;
+
+        // Place ship
+        ship.placed = true;
+        ship.cells = cells;
+        cells.forEach(([rr, cc], k) => {
+          pState.grid[rr][cc] = { shipIdx: pState.selectedShip };
+        });
+
+        // Auto-select next unplaced ship
+        const nextUnplaced = pState.ships.findIndex(
+          (s, i) => !s.placed && i !== pState.selectedShip,
+        );
+        pState.selectedShip = nextUnplaced >= 0 ? nextUnplaced : null;
+
+        renderPlaceGrid();
+        buildShipQueue();
+        updatePlaceStatusLabel();
+        updateDoneButton();
+        updatePlaceAdvice(r, c);
+      }
+
+      function removeShip(idx) {
+        const ship = pState.ships[idx];
+        if (!ship.placed) return;
+        ship.cells.forEach(([rr, cc]) => {
+          pState.grid[rr][cc] = null;
+        });
+        ship.placed = false;
+        ship.cells = [];
+        pState.selectedShip = idx;
+        renderPlaceGrid();
+        buildShipQueue();
+        updatePlaceStatusLabel();
+        updateDoneButton();
+      }
+
+      function renderPlaceGrid() {
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const cell = document.getElementById(`pcell-${r}-${c}`);
+            // Remove all state classes
+            cell.className = "pcell";
+            cell.innerHTML = "";
+
+            const occupant = pState.grid[r][c];
+            if (occupant !== null) {
+              cell.classList.add("placed");
+              // Mark ends of each ship
+              const ship = pState.ships[occupant.shipIdx];
+              const cellIdx = ship.cells.findIndex(
+                ([rr, cc]) => rr === r && cc === c,
+              );
+              if (cellIdx === 0 || cellIdx === ship.cells.length - 1) {
+                cell.classList.add("placed-end");
+              }
+            }
+
+            // Threat map overlay — continuous color per unique distance value
+            if (pState.threatMapOn && occupant === null) {
+              const t = getThreatScore(r, c);
+              const [bg, border] = threatColor(t);
+              cell.style.background = bg;
+              cell.style.borderColor = border;
+            } else {
+              cell.style.background = "";
+              cell.style.borderColor = "";
+            }
+          }
+        }
+
+        // Re-apply preview if hovering
+        if (pState.hoverCell) refreshPlacePreview(...pState.hoverCell);
+      }
+
+      // Threat score: fraction of all opponent ship placements that cover this cell (0-1)
+      // High = dangerous position for your own ship (opponent likely to shoot here)
+      function getThreatScore(r, c) {
+        const dr = Math.abs(r - 4.5);
+        const dc = Math.abs(c - 4.5);
+        const dist = Math.sqrt(dr * dr + dc * dc);
+        return Math.max(0, 1 - dist / 6.5);
+      }
+
+      // Interpolates a full green→yellow→red gradient for any threat value 0..1
+      function threatColor(t) {
+        // Keyframe stops: [value, r, g, b]
+        const stops = [
+          [0.0, 26, 255, 122], // green
+          [0.25, 140, 255, 50], // yellow-green
+          [0.5, 255, 220, 0], // yellow
+          [0.75, 255, 100, 0], // orange
+          [1.0, 255, 30, 30], // red
+        ];
+        let lo = stops[0],
+          hi = stops[stops.length - 1];
+        for (let i = 0; i < stops.length - 1; i++) {
+          if (t >= stops[i][0] && t <= stops[i + 1][0]) {
+            lo = stops[i];
+            hi = stops[i + 1];
+            break;
+          }
+        }
+        const span = hi[0] - lo[0] || 1;
+        const f = (t - lo[0]) / span;
+        const ri = Math.round(lo[1] + f * (hi[1] - lo[1]));
+        const gi = Math.round(lo[2] + f * (hi[2] - lo[2]));
+        const bi = Math.round(lo[3] + f * (hi[3] - lo[3]));
+        const bg = `rgba(${ri},${gi},${bi},0.13)`;
+        const border = `rgba(${ri},${gi},${bi},0.55)`;
+        return [bg, border];
+      }
+
+      function toggleThreatMap() {
+        pState.threatMapOn = !pState.threatMapOn;
+        const btn = document.getElementById("threat-toggle");
+        btn.textContent = `THREAT MAP: ${pState.threatMapOn ? "ON" : "OFF"}`;
+        btn.className = `heatmap-toggle-btn${pState.threatMapOn ? " on" : ""}`;
+        renderPlaceGrid();
+      }
+
+      function updatePlaceStatusLabel() {
+        const label = document.getElementById("place-status-label");
+        const unplaced = pState.ships.filter((s) => !s.placed).length;
+        if (unplaced === 0) {
+          label.textContent = "All ships placed!";
+          label.style.color = "var(--green)";
+        } else if (pState.selectedShip !== null) {
+          const ship = pState.ships[pState.selectedShip];
+          label.textContent = `Placing: ${ship.name} (${ship.size} cells)`;
+          label.style.color = "var(--amber)";
+        } else {
+          label.textContent = `${unplaced} ship(s) remaining`;
+          label.style.color = "var(--text-dim)";
+        }
+      }
+
+      function updateDoneButton() {
+        const allPlaced = pState.ships.every((s) => s.placed);
+        document.getElementById("place-done-btn").disabled = !allPlaced;
+      }
+
+      function updatePlaceAdvice(r, c) {
+        const el = document.getElementById("place-advice-content");
+        const isCorner =
+          (r === 0 || r === ROWS - 1) && (c === 0 || c === COLS - 1);
+        const isEdge = r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1;
+        const isCenter = r >= 3 && r <= 6 && c >= 3 && c <= 6;
+        const threat = getThreatScore(r, c);
+        const threatPct = Math.round(threat * 100);
+        const coord = ROW_LABELS[r] + COL_LABELS[c];
+
+        let cards = "";
+
+        // Threat rating for hovered cell — use same continuous color as grid
+        const [, borderRaw] = threatColor(threat);
+        const tColor = borderRaw.replace(/[\d.]+\)$/, "1)"); // full opacity for text
+        const threatLabel =
+          threat > 0.8
+            ? "CRITICAL RISK"
+            : threat > 0.6
+              ? "HIGH RISK"
+              : threat > 0.4
+                ? "MODERATE RISK"
+                : threat > 0.2
+                  ? "LOW RISK"
+                  : "MINIMAL RISK";
+        const warnClass = threat > 0.6 ? " warn" : "";
+        cards += `
+    <div class="advice-card${warnClass}">
+      <div class="advice-tag">Cell ${coord} — <span style="color:${tColor}">${threatLabel}</span></div>
+      <div class="advice-text">An opponent using probability search has roughly <strong style="color:${tColor}">${threatPct}%</strong> relative early-game interest in this area. ${isCorner ? "Corner cells are statistically the last to be targeted — excellent defensive placement." : isEdge ? "Edge cells develop threat slowly as the probability density converges inward." : isCenter ? "The center board has peak early-game probability density and is targeted first." : "Mid-board cells see moderate early threat that grows as surrounding ships are found."}</div>
+    </div>`;
+
+        if (
+          pState.selectedShip !== null &&
+          !pState.ships[pState.selectedShip].placed
+        ) {
+          const ship = pState.ships[pState.selectedShip];
+          const cells = getPlacementCells(r, c, ship.size, pState.orientation);
+          const valid = isPlacementValid(cells);
+          if (!valid) {
+            cards += `<div class="advice-card warn"><div class="advice-tag">Invalid Placement</div><div class="advice-text">This position overlaps another ship or goes out of bounds. Try rotating with R or choosing a different cell.</div></div>`;
+          } else if (ship.size >= 4) {
+            cards += `<div class="advice-card"><div class="advice-tag">Large Ship Tip</div><div class="advice-text">The ${ship.name} (${ship.size} cells) fits in fewer valid board positions than smaller ships, making it easier for a probability search to locate. Placing it along an edge reduces the number of orientations an opponent's algorithm can find it in.</div></div>`;
+          }
+        }
+
+        // General strategy reminder
+        const unplaced = pState.ships.filter((s) => !s.placed).length;
+        if (unplaced > 0 && unplaced < 5) {
+          cards += `<div class="advice-card"><div class="advice-tag">Human Bias Note</div><div class="advice-text">Research suggests players may subconsciously avoid shooting cells that overlap their own ship positions. Placing ships where you'd personally hesitate to shoot may provide a psychological edge.</div></div>`;
+        }
+
+        el.innerHTML =
+          cards ||
+          `
+    <div class="advice-card">
+      <div class="advice-tag">Getting Started</div>
+      <div class="advice-text">Click a ship to select it, then click the grid to place it. Press R to rotate. Click a placed ship in the list to remove it.</div>
+    </div>`;
+      }
+
+      function resetPlacement() {
+        pState.grid = Array.from({ length: ROWS }, () =>
+          Array(COLS).fill(null),
+        );
+        pState.ships.forEach((s) => {
+          s.placed = false;
+          s.cells = [];
+        });
+        pState.selectedShip = 0;
+        renderPlaceGrid();
+        buildShipQueue();
+        updatePlaceStatusLabel();
+        updateDoneButton();
+        document.getElementById("place-advice-content").innerHTML = `
+    <div class="advice-card">
+      <div class="advice-tag">Getting Started</div>
+      <div class="advice-text">Click a ship from the list to select it, then click on the grid to place it. Press R or use the direction buttons to rotate.</div>
+    </div>
+    <div class="advice-card warn">
+      <div class="advice-tag">Corner Strategy</div>
+      <div class="advice-text">Against a probability-search opponent, corners and edges are statistically safest. The center of the board has the highest early-game probability density.</div>
+    </div>`;
+      }
+
+      function finalizePlacement() {
+        if (!pState.ships.every((s) => s.placed)) return;
+        showPage("play");
+      }
+
+      // ════════════════════════════════════════════
+      // INIT
+      // ════════════════════════════════════════════
+      state = initState();
+      buildGrid();
+      buildFleetStatus();
+      updateAll();
+
+      initPlacement();
+      buildPlacementGrid();
+      renderPlaceGrid();
+      buildShipQueue();
+      updatePlaceStatusLabel();
+    </script>
+  </body>
+</html>

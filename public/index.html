@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ari eaton</title>
+    <meta name="description" content="Ari Eaton's projects — battleship, good boy, and whatever's next." />
+    <meta name="theme-color" content="#14100d" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg: #14100d;
+        --surface: #1d1712;
+        --surface-hover: #241d17;
+        --line: #392c22;
+        --text: #f4ece0;
+        --text-dim: #ab9c8a;
+        --text-faint: #6b5d4e;
+        --tomato: #ff6a54;
+        --marigold: #ffc153;
+        --cobalt: #8ba0ff;
+        --font: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        color-scheme: dark;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        background-image:
+          radial-gradient(60% 45% at 50% 0%, rgba(255, 106, 84, 0.1), transparent 70%),
+          radial-gradient(circle, rgba(244, 236, 224, 0.05) 1px, transparent 1.4px);
+        background-size:
+          auto,
+          22px 22px;
+        color: var(--text);
+        font-family: var(--font);
+        display: flex;
+        flex-direction: column;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .wrap {
+        width: 100%;
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 0 clamp(1.25rem, 4vw, 2rem);
+      }
+
+      /* header */
+      header {
+        border-bottom: 1px solid var(--line);
+      }
+      header .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-top: 1.4rem;
+        padding-bottom: 1.4rem;
+        flex-wrap: wrap;
+      }
+      .logo {
+        font-weight: 800;
+        font-size: 1.05rem;
+        letter-spacing: -0.01em;
+      }
+      .logo .dot {
+        color: var(--tomato);
+      }
+      nav {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.85rem;
+      }
+      nav a {
+        text-decoration: none;
+        color: var(--text-dim);
+        border-bottom: 1px solid transparent;
+        padding-bottom: 2px;
+      }
+      nav a:hover {
+        color: var(--marigold);
+        border-bottom-color: var(--marigold);
+      }
+      nav a:focus-visible,
+      .project a:focus-visible {
+        outline: 2px solid var(--tomato);
+        outline-offset: 3px;
+      }
+
+      main {
+        flex: 1;
+      }
+
+      /* hero */
+      .hero {
+        padding: clamp(3rem, 8vw, 5rem) 0 clamp(2rem, 5vw, 3rem);
+      }
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(2.2rem, 6vw, 3.2rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        text-wrap: balance;
+      }
+      .hero .tagline {
+        margin: 0.8rem 0 0;
+        max-width: 44ch;
+        color: var(--text-dim);
+        font-size: 1.05rem;
+        line-height: 1.6;
+      }
+      .hero .tagline .accent {
+        color: var(--cobalt);
+      }
+
+      /* projects */
+      .projects {
+        padding-bottom: clamp(3rem, 8vw, 5rem);
+      }
+      .section-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 0 0 1.1rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+      }
+      .project {
+        position: relative;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-top: 3px solid var(--project-accent, var(--line));
+        border-radius: 10px;
+        padding: 1.3rem 1.4rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        transition: background-color 0.15s ease, transform 0.15s ease;
+      }
+      a.project {
+        text-decoration: none;
+      }
+      a.project:hover {
+        background: var(--surface-hover);
+        transform: translateY(-2px);
+      }
+      .project .tag {
+        align-self: flex-start;
+        font-size: 0.65rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+        color: var(--project-accent, var(--text-faint));
+        background: color-mix(in srgb, var(--project-accent, var(--text-faint)) 16%, transparent);
+        border: 1px solid color-mix(in srgb, var(--project-accent, var(--text-faint)) 35%, transparent);
+      }
+      .project h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+      .project p {
+        margin: 0;
+        color: var(--text-dim);
+        font-size: 0.88rem;
+        line-height: 1.55;
+        flex: 1;
+      }
+      .project .open {
+        font-size: 0.82rem;
+        color: var(--project-accent, var(--text-faint));
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35em;
+      }
+      a.project:hover .open {
+        gap: 0.55em;
+      }
+      .project.is-wip {
+        opacity: 0.7;
+      }
+      .project.is-wip h2 {
+        color: var(--text-dim);
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+      }
+      footer .wrap {
+        padding: 1.3rem clamp(1.25rem, 4vw, 2rem);
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.75rem;
+        color: var(--text-faint);
+      }
+      footer .wrap span {
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="wrap">
+        <div class="logo">eaton</div>
+        <nav>
+          <a href="/battleship">battleship</a>
+          <a href="/goodboy">good boy</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap">
+          <h1>ari eaton</h1>
+          <p class="tagline">
+            Builds small, <span class="accent">slightly overengineered</span> things for the web.
+            This site is one of them.
+          </p>
+        </div>
+      </section>
+
+      <section class="projects">
+        <div class="wrap">
+          <p class="section-label">Projects</p>
+          <div class="grid">
+            <a class="project" style="--project-accent: var(--tomato)" href="/battleship">
+              <span class="tag">live</span>
+              <h2>battleship</h2>
+              <p>Radar-screen naval combat. Full retro terminal HUD.</p>
+              <span class="open">open →</span>
+            </a>
+
+            <a class="project" style="--project-accent: var(--cobalt)" href="/goodboy">
+              <span class="tag">live</span>
+              <h2>good boy</h2>
+              <p>A very small page about a very good boy.</p>
+              <span class="open">open →</span>
+            </a>
+
+            <div class="project is-wip" style="--project-accent: var(--marigold)">
+              <span class="tag">wip</span>
+              <h2>???</h2>
+              <p>Next thing. Not pushed yet.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>ariEaton.com</span>
+        <span>updated 2026</span>
+      </div>
+    </footer>
+  </body>
+</html>
