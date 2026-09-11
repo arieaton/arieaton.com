@@ -79,6 +79,22 @@
         flex-shrink: 0;
       }
 
+      .back-home {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 1px;
+        color: var(--text-dim);
+        text-decoration: none;
+        margin-right: 24px;
+        white-space: nowrap;
+        transition: color 0.15s ease;
+      }
+
+      .back-home:hover,
+      .back-home:focus-visible {
+        color: var(--amber);
+      }
+
       .logo {
         font-family: var(--font-display);
         font-size: 15px;
@@ -1314,6 +1330,7 @@
   <body>
     <!-- TOP BAR -->
     <header>
+      <a href="/" class="back-home">&larr; EATON</a>
       <div class="logo">BATTLE<span>SHIP</span></div>
       <nav>
         <button class="nav-btn" id="nav-tips" onclick="showPage('tips')">

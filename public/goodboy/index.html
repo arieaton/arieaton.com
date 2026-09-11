@@ -3,44 +3,142 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ari</title>
+    <title>good boy</title>
+    <meta name="description" content="A very small page about a very good boy." />
+    <meta name="theme-color" content="#14100d" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
+
     <style>
+      :root {
+        --bg: #14100d;
+        --line: #392c22;
+        --text: #f4ece0;
+        --dim: #ab9c8a;
+        --faint: #6b5d4e;
+        --cobalt: #8ba0ff;
+        --font: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        color-scheme: dark;
+      }
       body {
         margin: 0;
-        height: 100vh;
+        min-height: 100vh;
+        background: var(--bg);
+        background-image:
+          radial-gradient(60% 45% at 50% 0%, rgba(139, 160, 255, 0.1), transparent 70%),
+          radial-gradient(circle, rgba(244, 236, 224, 0.05) 1px, transparent 1.4px);
+        background-size:
+          auto,
+          22px 22px;
+        color: var(--text);
+        font-family: var(--font);
+        display: flex;
+        flex-direction: column;
+      }
+      a {
+        color: inherit;
+      }
+      header {
+        border-bottom: 1px solid var(--line);
+      }
+      header .wrap {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 1.4rem clamp(1.25rem, 4vw, 2rem);
+      }
+      .logo {
+        font-weight: 800;
+        font-size: 1rem;
+        text-decoration: none;
+      }
+      main {
+        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: "Inter", sans-serif;
-        background-color: #fff;
-        color: #111;
+        padding: 2rem 1rem;
       }
-      .container {
+      .card {
         text-align: center;
       }
-      p {
+      .paw {
+        width: 48px;
+        height: 34px;
+        margin: 0 auto 1.2rem;
+        position: relative;
+      }
+      .paw i {
+        position: absolute;
+        border-radius: 50%;
+        background: var(--cobalt);
+      }
+      .paw i:nth-child(1) {
+        width: 15px;
+        height: 15px;
+        top: 0;
+        left: 4px;
+      }
+      .paw i:nth-child(2) {
+        width: 15px;
+        height: 15px;
+        top: 0;
+        right: 4px;
+      }
+      .paw i:nth-child(3) {
+        width: 24px;
+        height: 20px;
+        bottom: 0;
+        left: 12px;
+        border-radius: 50% 50% 45% 45%;
+      }
+      p.label {
         margin: 0;
-        font-size: 1.1rem;
+        font-size: 1.3rem;
+        font-weight: 700;
       }
-      a {
-        display: block;
-        margin-top: 0.75rem;
-        font-size: 1.1rem;
-        color: #0070f3;
-        text-decoration: underline;
+      a.back {
+        display: inline-block;
+        margin-top: 1.3rem;
+        font-size: 0.82rem;
+        color: var(--faint);
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        padding-bottom: 2px;
       }
-      a:hover {
-        color: #005bb5;
+      a.back:hover,
+      a.back:focus-visible {
+        color: var(--cobalt);
+        border-bottom-color: var(--cobalt);
+      }
+      a:focus-visible {
+        outline: 2px solid var(--cobalt);
+        outline-offset: 3px;
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <p>good boy</p>
-    </div>
+    <header>
+      <div class="wrap">
+        <a class="logo" href="/">eaton</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="card">
+        <div class="paw"><i></i><i></i><i></i></div>
+        <p class="label">good boy</p>
+        <a class="back" href="/">← back to projects</a>
+      </div>
+    </main>
   </body>
 </html>
