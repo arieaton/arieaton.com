@@ -4,9 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ari eaton</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314100d'/%3E%3Ctext x='32' y='45' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='%23ffc153' text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1526'/%3E%3Ctext x='32' y='45' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='%23ff2e88' text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E" />
     <meta name="description" content="Ari Eaton's projects — battleship, good boy, poker against a bot, and whatever's next." />
-    <meta name="theme-color" content="#14100d" />
+    <meta name="theme-color" content="#f7f1e4" />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://arieaton.com/" />
@@ -25,17 +25,17 @@
 
     <style>
       :root {
-        --bg: #14100d;
-        --surface: #1d1712;
-        --surface-hover: #241d17;
-        --line: #392c22;
-        --text: #f4ece0;
-        --dim: #ab9c8a;
-        --faint: #6b5d4e;
-        --tomato: #ff6a54;
-        --marigold: #ffc153;
-        --cobalt: #8ba0ff;
-        --violet: #b596ff;
+        --bg: #f7f1e4;
+        --surface: #ffffff;
+        --surface-hover: #fff9ec;
+        --line: #e8dcc2;
+        --ink: #1c1526;
+        --dim: #665b74;
+        --faint: #9a8fa4;
+        --pink: #ff2e88;
+        --orange: #ff7a1a;
+        --cyan: #00aec9;
+        --violet: #8b5cf6;
         --font: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
         --nav-h: 60px;
       }
@@ -44,19 +44,19 @@
         box-sizing: border-box;
       }
       html {
-        color-scheme: dark;
+        color-scheme: light;
       }
 
       body {
         margin: 0;
         background: var(--bg);
         background-image:
-          radial-gradient(60% 45% at 50% 0%, rgba(255, 106, 84, 0.1), transparent 70%),
-          radial-gradient(circle, rgba(244, 236, 224, 0.05) 1px, transparent 1.4px);
+          radial-gradient(60% 45% at 50% 0%, rgba(255, 46, 136, 0.1), transparent 70%),
+          radial-gradient(circle, rgba(28, 21, 38, 0.07) 1px, transparent 1.4px);
         background-size:
           auto,
           22px 22px;
-        color: var(--text);
+        color: var(--ink);
         font-family: var(--font);
       }
 
@@ -77,9 +77,15 @@
         height: var(--nav-h);
         display: flex;
         align-items: center;
-        background: rgba(20, 16, 13, 0.82);
+        background: rgba(247, 241, 228, 0.5);
         backdrop-filter: blur(8px);
         border-bottom: 1px solid var(--line);
+        box-shadow: none;
+        transition: background-color 0.25s ease, box-shadow 0.25s ease;
+      }
+      .site-nav.is-condensed {
+        background: rgba(247, 241, 228, 0.92);
+        box-shadow: 0 10px 26px rgba(28, 21, 38, 0.1);
       }
       .site-nav .wrap {
         display: flex;
@@ -106,37 +112,12 @@
       }
       .site-nav nav a.is-active,
       .site-nav nav a:hover {
-        color: var(--marigold);
-        border-bottom-color: var(--marigold);
+        color: var(--pink);
+        border-bottom-color: var(--pink);
       }
       a:focus-visible {
-        outline: 2px solid var(--tomato);
+        outline: 2px solid var(--pink);
         outline-offset: 3px;
-      }
-
-      /* condense the nav bar once you scroll past the very top */
-      @supports (animation-timeline: scroll()) {
-        .site-nav {
-          animation: nav-condense linear both;
-          animation-timeline: scroll(root);
-          animation-range: 0 120px;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .site-nav {
-            animation: none;
-            background: rgba(20, 16, 13, 0.94);
-          }
-        }
-      }
-      @keyframes nav-condense {
-        from {
-          background: rgba(20, 16, 13, 0.4);
-          box-shadow: none;
-        }
-        to {
-          background: rgba(20, 16, 13, 0.94);
-          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
-        }
       }
 
       section {
@@ -150,6 +131,9 @@
         flex-direction: column;
         justify-content: center;
         padding: 3rem 0;
+      }
+      .hero-inner {
+        will-change: transform, opacity;
       }
       .hero .kicker {
         font-size: 0.72rem;
@@ -166,14 +150,14 @@
         letter-spacing: -0.01em;
         text-wrap: balance;
       }
-      .hero h1 .w-tomato {
-        color: var(--tomato);
+      .hero h1 .w-pink {
+        color: var(--pink);
       }
-      .hero h1 .w-marigold {
-        color: var(--marigold);
+      .hero h1 .w-orange {
+        color: var(--orange);
       }
-      .hero h1 .w-cobalt {
-        color: var(--cobalt);
+      .hero h1 .w-cyan {
+        color: var(--cyan);
       }
       .hero h1 .w-violet {
         color: var(--violet);
@@ -206,84 +190,19 @@
       }
 
       /* ---------- reveal-on-scroll ----------
-         Base path (below): a class-toggle fade, driven by the IntersectionObserver
-         in the page script. Where the browser supports scroll-driven CSS animations
-         (@supports block further down), that takes over instead with a continuous
-         scrubbed animation tied directly to scroll position -- no JS needed, and no
-         one-shot trigger to feel abrupt. */
+         Driven entirely by the scroll handler in the page script: opacity/transform are
+         set directly per animation frame from actual scroll position, so it scrubs
+         both ways (scroll up = un-reveals) instead of firing once and staying put.
+         No CSS transition here on purpose -- a lagging transition fighting a
+         per-frame update reads as laggy, not smooth. */
       .reveal {
         opacity: 0;
-        transform: translateY(16px);
-        transition: opacity 0.6s ease, transform 0.6s ease;
-      }
-      .reveal.is-visible {
-        opacity: 1;
-        transform: none;
+        transform: translateY(22px);
       }
       @media (prefers-reduced-motion: reduce) {
         .reveal {
           opacity: 1;
           transform: none;
-          transition: none;
-        }
-      }
-
-      @supports (animation-timeline: view()) {
-        .reveal {
-          opacity: 1;
-          transform: none;
-          transition: none;
-          animation: reveal-in linear both;
-          animation-timeline: view();
-          animation-range: entry 0% cover 30%;
-        }
-      }
-      @keyframes reveal-in {
-        from {
-          opacity: 0;
-          transform: translateY(28px) scale(0.98);
-        }
-        to {
-          opacity: 1;
-          transform: none;
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        @supports (animation-timeline: view()) {
-          .reveal {
-            animation: none;
-          }
-        }
-      }
-
-      /* the hero recedes as you scroll past it, instead of just vanishing */
-      @supports (animation-timeline: view()) {
-        .hero {
-          view-timeline-name: --hero-tl;
-        }
-        .hero .kicker,
-        .hero h1,
-        .hero .scroll-cue {
-          animation: reveal-in linear both, hero-exit linear both;
-          animation-timeline: view(), --hero-tl;
-          animation-range: entry 0% cover 30%, cover 15% cover 75%;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .hero .kicker,
-          .hero h1,
-          .hero .scroll-cue {
-            animation: none;
-          }
-        }
-      }
-      @keyframes hero-exit {
-        from {
-          opacity: 1;
-          transform: none;
-        }
-        to {
-          opacity: 0.15;
-          transform: translateY(-30px) scale(0.93);
         }
       }
 
@@ -357,11 +276,8 @@
         padding: 0.15rem 0.55rem;
         border-radius: 999px;
         color: var(--tag-c, var(--faint));
-        background: color-mix(in srgb, var(--tag-c, var(--faint)) 16%, transparent);
-        border: 1px solid color-mix(in srgb, var(--tag-c, var(--faint)) 35%, transparent);
-      }
-      .proj-row.is-soon h2 {
-        color: var(--violet);
+        background: color-mix(in srgb, var(--tag-c, var(--faint)) 14%, white);
+        border: 1px solid color-mix(in srgb, var(--tag-c, var(--faint)) 40%, transparent);
       }
 
       /* icons */
@@ -374,14 +290,14 @@
       }
       .icon-radar {
         border-radius: 50%;
-        border: 1px solid var(--tomato);
-        background: conic-gradient(from 0deg, rgba(255, 106, 84, 0.6), transparent 40%);
+        border: 1px solid var(--pink);
+        background: conic-gradient(from 0deg, rgba(255, 46, 136, 0.55), transparent 40%);
         animation: spin 3s linear infinite;
       }
       .icon-paw i {
         position: absolute;
         border-radius: 50%;
-        background: var(--cobalt);
+        background: var(--cyan);
       }
       .icon-paw i:nth-child(1) {
         width: 13px;
@@ -467,7 +383,7 @@
         text-decoration: none;
       }
       footer a:hover {
-        color: var(--marigold);
+        color: var(--pink);
       }
     </style>
   </head>
@@ -487,13 +403,15 @@
     <main>
       <section class="hero" id="home">
         <div class="wrap">
-          <p class="kicker reveal">ari eaton</p>
-          <h1 class="reveal">
-            <span class="w-tomato">builds</span> <span class="w-marigold">small,</span>
-            <span class="w-cobalt">slightly</span> <span class="w-violet">overengineered</span>
-            things for the web.
-          </h1>
-          <a class="scroll-cue reveal" href="#about"><span class="arrow">↓</span> keep scrolling</a>
+          <div class="hero-inner">
+            <p class="kicker reveal">ari eaton</p>
+            <h1 class="reveal">
+              <span class="w-pink">builds</span> <span class="w-orange">small,</span>
+              <span class="w-cyan">slightly</span> <span class="w-violet">overengineered</span>
+              things for the web.
+            </h1>
+            <a class="scroll-cue reveal" href="#about"><span class="arrow">↓</span> keep scrolling</a>
+          </div>
         </div>
       </section>
 
@@ -501,7 +419,7 @@
         <div class="wrap">
           <p class="section-label reveal">about</p>
           <p class="about-placeholder reveal">
-            <span class="tag" style="--tag-c: var(--marigold)">under construction</span>
+            <span class="tag" style="--tag-c: var(--orange)">under construction</span>
           </p>
         </div>
       </section>
@@ -515,7 +433,7 @@
             <div>
               <div class="head">
                 <h2>battleship</h2>
-                <span class="tag" style="--tag-c: var(--tomato)">live</span>
+                <span class="tag" style="--tag-c: var(--pink)">live</span>
               </div>
               <p>Radar-screen naval combat. Full retro terminal HUD.</p>
             </div>
@@ -526,7 +444,7 @@
             <div>
               <div class="head">
                 <h2>good boy</h2>
-                <span class="tag" style="--tag-c: var(--cobalt)">live</span>
+                <span class="tag" style="--tag-c: var(--cyan)">live</span>
               </div>
               <p>A very small page about a very good boy.</p>
             </div>
@@ -556,30 +474,59 @@
     <script>
       (function () {
         var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        var scrollDriven = window.CSS && CSS.supports && CSS.supports("animation-timeline: view()");
-        var reveals = document.querySelectorAll(".reveal");
+        var reveals = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+        var heroInner = document.querySelector(".hero-inner");
+        var heroSection = document.getElementById("home");
+        var nav = document.querySelector(".site-nav");
 
-        // Browsers that support scroll-driven CSS animations handle .reveal entirely
-        // in CSS (see the @supports block in <style>). Everyone else gets this
-        // one-shot IntersectionObserver fallback.
-        if (scrollDriven) {
-          // no-op: CSS animation-timeline takes over
-        } else if (reduceMotion) {
+        function clamp(v, lo, hi) {
+          return Math.max(lo, Math.min(hi, v));
+        }
+
+        if (reduceMotion) {
           reveals.forEach(function (el) {
-            el.classList.add("is-visible");
+            el.style.opacity = "1";
+            el.style.transform = "none";
           });
+          if (nav) nav.classList.add("is-condensed");
         } else {
-          var io = new IntersectionObserver(
-            function (entries) {
-              entries.forEach(function (entry) {
-                if (entry.isIntersecting) entry.target.classList.add("is-visible");
-              });
-            },
-            { threshold: 0.2 }
-          );
-          reveals.forEach(function (el) {
-            io.observe(el);
-          });
+          var ticking = false;
+
+          function update() {
+            var vh = window.innerHeight;
+
+            // hero recedes as you scroll past it, rather than just vanishing
+            if (heroInner && heroSection) {
+              var heroRect = heroSection.getBoundingClientRect();
+              var p = clamp(-heroRect.top / (heroRect.height * 0.7 || 1), 0, 1);
+              heroInner.style.opacity = String(1 - p * 0.85);
+              heroInner.style.transform = "translateY(" + (p * -50).toFixed(1) + "px) scale(" + (1 - p * 0.08).toFixed(3) + ")";
+            }
+
+            // each .reveal scrubs in/out with actual scroll position
+            reveals.forEach(function (el) {
+              var rect = el.getBoundingClientRect();
+              var start = vh * 0.92;
+              var end = vh * 0.55;
+              var prog = clamp((start - rect.top) / (start - end || 1), 0, 1);
+              el.style.opacity = String(prog);
+              el.style.transform = "translateY(" + ((1 - prog) * 22).toFixed(1) + "px)";
+            });
+
+            nav && nav.classList.toggle("is-condensed", window.scrollY > 30);
+            ticking = false;
+          }
+
+          function onScroll() {
+            if (!ticking) {
+              requestAnimationFrame(update);
+              ticking = true;
+            }
+          }
+
+          window.addEventListener("scroll", onScroll, { passive: true });
+          window.addEventListener("resize", onScroll);
+          update();
         }
 
         var navLinks = document.querySelectorAll(".site-nav nav a");
