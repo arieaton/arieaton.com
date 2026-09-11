@@ -45,9 +45,6 @@
         display: flex;
         flex-direction: column;
       }
-      a {
-        color: inherit;
-      }
       header {
         border-bottom: 1px solid var(--line);
       }
@@ -106,30 +103,12 @@
         font-size: 1.3rem;
         font-weight: 700;
       }
-      a.back {
-        display: inline-block;
-        margin-top: 1.3rem;
-        font-size: 0.82rem;
-        color: var(--faint);
-        text-decoration: none;
-        border-bottom: 1px solid transparent;
-        padding-bottom: 2px;
-      }
-      a.back:hover,
-      a.back:focus-visible {
-        color: var(--cobalt);
-        border-bottom-color: var(--cobalt);
-      }
-      a:focus-visible {
-        outline: 2px solid var(--cobalt);
-        outline-offset: 3px;
-      }
     </style>
   </head>
   <body>
     <header>
       <div class="wrap">
-        <a class="logo" href="/">eaton</a>
+        <span class="logo">eaton</span>
       </div>
     </header>
 
@@ -137,7 +116,6 @@
       <div class="card">
         <div class="paw"><i></i><i></i><i></i></div>
         <p class="label">good boy</p>
-        <a class="back" href="/">← back to projects</a>
       </div>
     </main>
   </body>
