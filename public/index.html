@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ari eaton</title>
-    <meta name="description" content="Ari Eaton's projects — battleship, good boy, and whatever's next." />
+    <meta name="description" content="Ari Eaton's projects — battleship, good boy, poker against a bot, and whatever's next." />
     <meta name="theme-color" content="#14100d" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -36,12 +36,6 @@
       }
       html {
         color-scheme: dark;
-        scroll-snap-type: y proximity;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        html {
-          scroll-snap-type: none;
-        }
       }
 
       body {
@@ -63,9 +57,7 @@
 
       .wrap {
         width: 100%;
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 0 clamp(1.25rem, 4vw, 2rem);
+        padding: 0 clamp(1.25rem, 5vw, 5rem);
       }
 
       /* ---------- nav ---------- */
@@ -113,8 +105,32 @@
         outline-offset: 3px;
       }
 
+      /* condense the nav bar once you scroll past the very top */
+      @supports (animation-timeline: scroll()) {
+        .site-nav {
+          animation: nav-condense linear both;
+          animation-timeline: scroll(root);
+          animation-range: 0 120px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .site-nav {
+            animation: none;
+            background: rgba(20, 16, 13, 0.94);
+          }
+        }
+      }
+      @keyframes nav-condense {
+        from {
+          background: rgba(20, 16, 13, 0.4);
+          box-shadow: none;
+        }
+        to {
+          background: rgba(20, 16, 13, 0.94);
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+        }
+      }
+
       section {
-        scroll-snap-align: start;
         scroll-margin-top: var(--nav-h);
       }
 
@@ -153,12 +169,6 @@
       .hero h1 .w-violet {
         color: var(--violet);
       }
-      .hero .sub {
-        margin: 1.2rem 0 0;
-        color: var(--dim);
-        font-size: 1rem;
-        max-width: 42ch;
-      }
       .scroll-cue {
         margin-top: 3rem;
         font-size: 0.76rem;
@@ -186,7 +196,12 @@
         }
       }
 
-      /* ---------- reveal-on-scroll ---------- */
+      /* ---------- reveal-on-scroll ----------
+         Base path (below): a class-toggle fade, driven by the IntersectionObserver
+         in the page script. Where the browser supports scroll-driven CSS animations
+         (@supports block further down), that takes over instead with a continuous
+         scrubbed animation tied directly to scroll position -- no JS needed, and no
+         one-shot trigger to feel abrupt. */
       .reveal {
         opacity: 0;
         transform: translateY(16px);
@@ -201,6 +216,65 @@
           opacity: 1;
           transform: none;
           transition: none;
+        }
+      }
+
+      @supports (animation-timeline: view()) {
+        .reveal {
+          opacity: 1;
+          transform: none;
+          transition: none;
+          animation: reveal-in linear both;
+          animation-timeline: view();
+          animation-range: entry 0% cover 30%;
+        }
+      }
+      @keyframes reveal-in {
+        from {
+          opacity: 0;
+          transform: translateY(28px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        @supports (animation-timeline: view()) {
+          .reveal {
+            animation: none;
+          }
+        }
+      }
+
+      /* the hero recedes as you scroll past it, instead of just vanishing */
+      @supports (animation-timeline: view()) {
+        .hero {
+          view-timeline-name: --hero-tl;
+        }
+        .hero .kicker,
+        .hero h1,
+        .hero .scroll-cue {
+          animation: reveal-in linear both, hero-exit linear both;
+          animation-timeline: view(), --hero-tl;
+          animation-range: entry 0% cover 30%, cover 15% cover 75%;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hero .kicker,
+          .hero h1,
+          .hero .scroll-cue {
+            animation: none;
+          }
+        }
+      }
+      @keyframes hero-exit {
+        from {
+          opacity: 1;
+          transform: none;
+        }
+        to {
+          opacity: 0.15;
+          transform: translateY(-30px) scale(0.93);
         }
       }
 
@@ -222,46 +296,8 @@
         padding: 4rem 0;
         border-top: 1px solid var(--line);
       }
-      .about blockquote {
+      .about-placeholder {
         margin: 0;
-        border-left: 2px solid var(--tomato);
-        padding-left: 1.2rem;
-        font-size: 1.1rem;
-        line-height: 1.75;
-        max-width: 52ch;
-      }
-      .status-line {
-        margin-top: 1.4rem;
-        display: flex;
-        align-items: center;
-        gap: 0.6em;
-        font-size: 0.82rem;
-        color: var(--dim);
-      }
-      .status-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--marigold);
-        box-shadow: 0 0 6px rgba(255, 193, 83, 0.7);
-        flex: 0 0 auto;
-        animation: pulse 1.8s ease-in-out infinite;
-      }
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 0.5;
-          transform: scale(0.85);
-        }
-        50% {
-          opacity: 1;
-          transform: scale(1.1);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .status-dot {
-          animation: none;
-        }
       }
 
       /* ---------- projects ---------- */
@@ -448,7 +484,6 @@
             <span class="w-cobalt">slightly</span> <span class="w-violet">overengineered</span>
             things for the web.
           </h1>
-          <p class="sub reveal">This site is one of them.</p>
           <a class="scroll-cue reveal" href="#about"><span class="arrow">↓</span> keep scrolling</a>
         </div>
       </section>
@@ -456,12 +491,9 @@
       <section class="about" id="about">
         <div class="wrap">
           <p class="section-label reveal">about</p>
-          <blockquote class="reveal">
-            Ari eaton. Mostly self-taught, mostly at night. Likes taking something simple and giving it a
-            slightly ridiculous amount of craft — a battleship game with a full CRT HUD, a homepage that
-            used to pretend to be a code editor.
-          </blockquote>
-          <p class="status-line reveal"><span class="status-dot"></span>currently: shipping this site</p>
+          <p class="about-placeholder reveal">
+            <span class="tag" style="--tag-c: var(--marigold)">under construction</span>
+          </p>
         </div>
       </section>
 
@@ -491,16 +523,16 @@
             </div>
           </a>
 
-          <div class="proj-row reveal is-soon">
+          <a class="proj-row reveal" href="/poker">
             <div class="icon icon-node"><i></i><i></i><i></i></div>
             <div>
               <div class="head">
-                <h2>untitled-ai</h2>
-                <span class="tag" style="--tag-c: var(--violet)">coming soon</span>
+                <h2 style="color: var(--violet)">poker</h2>
+                <span class="tag" style="--tag-c: var(--violet)">live</span>
               </div>
-              <p>Something with models. Not shipped yet — this is its spot.</p>
+              <p>Heads-up hold'em against a bot that estimates its odds by simulation.</p>
             </div>
-          </div>
+          </a>
         </div>
       </section>
     </main>
@@ -515,9 +547,15 @@
     <script>
       (function () {
         var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var scrollDriven = window.CSS && CSS.supports && CSS.supports("animation-timeline: view()");
         var reveals = document.querySelectorAll(".reveal");
 
-        if (reduceMotion) {
+        // Browsers that support scroll-driven CSS animations handle .reveal entirely
+        // in CSS (see the @supports block in <style>). Everyone else gets this
+        // one-shot IntersectionObserver fallback.
+        if (scrollDriven) {
+          // no-op: CSS animation-timeline takes over
+        } else if (reduceMotion) {
           reveals.forEach(function (el) {
             el.classList.add("is-visible");
           });
