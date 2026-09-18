@@ -86,23 +86,17 @@
         color: inherit;
       }
 
-      /* Cursor spotlight: a soft accent glow that trails the pointer. Sits behind
-         all content (content is lifted to z-index 1) so it can never wash out text.
-         Pointer-only -- there's no cursor to follow on touch. */
-      .spotlight {
+      /* Cursor trail: a line drawn behind the pointer that fades out. Sits above
+         everything (including the nav) so the stroke is never clipped, but takes
+         no pointer events. Pointer devices only -- no cursor to trace on touch. */
+      #trail {
         position: fixed;
         inset: 0;
-        z-index: 0;
+        z-index: 50;
         pointer-events: none;
-        background: radial-gradient(
-          420px circle at var(--mx, 50%) var(--my, 20%),
-          rgba(255, 46, 136, 0.13),
-          rgba(139, 92, 246, 0.05) 45%,
-          transparent 70%
-        );
       }
       @media (hover: none), (prefers-reduced-motion: reduce) {
-        .spotlight {
+        #trail {
           display: none;
         }
       }
@@ -589,7 +583,7 @@
   </head>
 
   <body>
-    <div class="spotlight" id="spotlight" aria-hidden="true"></div>
+    <canvas id="trail" aria-hidden="true"></canvas>
 
     <header class="site-nav">
       <div class="wrap">
@@ -619,7 +613,7 @@
           <p class="section-label reveal">about</p>
           <p class="reveal">
             I'm a quantitative analyst at State Street, working on electronic currency trading.
-            <span class="muted">Before that, I studied computer science at Wesleyan — pre-AI, when you still had to write the code yourself. I live in Boston.</span>
+            <span class="muted">Before that, I studied computer science at Wesleyan — pre-AI. I live in Boston.</span>
           </p>
           <div class="tech-row reveal">
             <span class="tag" style="--tag-c: var(--pink)">Java</span>
@@ -806,29 +800,89 @@
           if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
           remeasure();
 
-          // cursor spotlight -- also rAF-throttled, and only writes two CSS vars
-          var spotlight = document.getElementById("spotlight");
-          if (spotlight && window.matchMedia("(hover: hover)").matches) {
-            var mx = 0,
-              my = 0,
-              spotTicking = false;
-            window.addEventListener(
-              "pointermove",
-              function (e) {
-                mx = e.clientX;
-                my = e.clientY;
-                if (!spotTicking) {
-                  requestAnimationFrame(function () {
-                    spotlight.style.setProperty("--mx", mx + "px");
-                    spotlight.style.setProperty("--my", my + "px");
-                    spotTicking = false;
-                  });
-                  spotTicking = true;
-                }
-              },
-              { passive: true }
-            );
+          initCursorTrail();
+        }
+
+        // ---- cursor trail ----------------------------------------------------
+        // Draws a line through recent pointer positions and fades each segment out
+        // by age. The render loop only runs while there's something to draw, so an
+        // idle page costs nothing.
+        function initCursorTrail() {
+          var canvas = document.getElementById("trail");
+          if (!canvas || !window.matchMedia("(hover: hover)").matches) return;
+
+          var ctx = canvas.getContext("2d");
+          var points = [];
+          var LIFETIME = 550; // ms for a segment to fade out completely
+          var MAX_POINTS = 140;
+          var running = false;
+          var dpr = 1;
+
+          function size() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.floor(window.innerWidth * dpr);
+            canvas.height = Math.floor(window.innerHeight * dpr);
+            canvas.style.width = window.innerWidth + "px";
+            canvas.style.height = window.innerHeight + "px";
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           }
+          size();
+          window.addEventListener("resize", size);
+
+          function draw() {
+            var now = performance.now();
+            while (points.length && now - points[0].t > LIFETIME) points.shift();
+
+            ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+            if (points.length > 1) {
+              ctx.lineCap = "round";
+              ctx.lineJoin = "round";
+              // two passes: a soft wide glow, then a crisp core on top
+              for (var pass = 0; pass < 2; pass++) {
+                for (var i = 1; i < points.length; i++) {
+                  var a = points[i - 1];
+                  var b = points[i];
+                  var life = 1 - (now - b.t) / LIFETIME; // 1 fresh -> 0 gone
+                  if (life <= 0) continue;
+                  // taper toward the tail as well as fading
+                  var taper = i / points.length;
+                  var w = life * taper;
+                  if (pass === 0) {
+                    ctx.strokeStyle = "rgba(0, 174, 201," + (w * 0.18).toFixed(3) + ")";
+                    ctx.lineWidth = 9 * w + 1;
+                  } else {
+                    ctx.strokeStyle = "rgba(0, 140, 190," + (w * 0.95).toFixed(3) + ")";
+                    ctx.lineWidth = 2.4 * w + 0.4;
+                  }
+                  ctx.beginPath();
+                  ctx.moveTo(a.x, a.y);
+                  ctx.lineTo(b.x, b.y);
+                  ctx.stroke();
+                }
+              }
+            }
+
+            if (points.length) {
+              requestAnimationFrame(draw);
+            } else {
+              ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+              running = false; // nothing left to animate; stop burning frames
+            }
+          }
+
+          window.addEventListener(
+            "pointermove",
+            function (e) {
+              points.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+              if (points.length > MAX_POINTS) points.shift();
+              if (!running) {
+                running = true;
+                requestAnimationFrame(draw);
+              }
+            },
+            { passive: true }
+          );
         }
 
         var navLinks = document.querySelectorAll(".site-nav nav a");
