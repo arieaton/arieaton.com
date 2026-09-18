@@ -224,8 +224,12 @@
         padding: 4rem 0;
         border-top: 1px solid var(--line);
       }
-      .about-placeholder {
+      .about p {
         margin: 0;
+        font-size: clamp(1.3rem, 3.2vw, 1.8rem);
+        font-weight: 700;
+        line-height: 1.4;
+        max-width: 20ch;
       }
 
       /* ---------- projects ---------- */
@@ -237,37 +241,38 @@
         padding: 4rem 0;
         border-top: 1px solid var(--line);
       }
-      .proj-row {
-        display: flex;
+      .projects-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1.1rem;
+      }
+      .proj-tile {
+        display: flex;
+        flex-direction: column;
         align-items: flex-start;
-        padding: 1.5rem 0;
-        border-top: 1px solid var(--line);
+        gap: 1.1rem;
+        padding: 1.7rem 1.4rem;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--surface);
         text-decoration: none;
-        transition: background-color 0.15s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
       }
-      .projects .proj-row:last-child {
-        border-bottom: 1px solid var(--line);
+      .proj-tile:hover {
+        transform: translateY(-4px);
+        border-color: var(--tile-c, var(--line));
+        box-shadow: 0 16px 32px -14px color-mix(in srgb, var(--tile-c, var(--ink)) 45%, transparent);
       }
-      a.proj-row:hover {
-        background: var(--surface-hover);
-      }
-      .proj-row .head {
+      .proj-tile .head {
         display: flex;
         align-items: center;
-        gap: 0.7em;
+        gap: 0.6em;
         flex-wrap: wrap;
       }
-      .proj-row h2 {
+      .proj-tile h2 {
         margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-      }
-      .proj-row p {
-        margin: 0.35rem 0 0;
-        color: var(--dim);
-        font-size: 0.88rem;
-        line-height: 1.55;
+        font-size: 1.15rem;
+        font-weight: 800;
       }
       .tag {
         font-size: 0.62rem;
@@ -282,11 +287,10 @@
 
       /* icons */
       .icon {
-        width: 38px;
-        height: 38px;
+        width: 44px;
+        height: 44px;
         flex: 0 0 auto;
         position: relative;
-        margin-top: 2px;
       }
       .icon-radar {
         border-radius: 50%;
@@ -418,9 +422,7 @@
       <section class="about" id="about">
         <div class="wrap">
           <p class="section-label reveal">about</p>
-          <p class="about-placeholder reveal">
-            <span class="tag" style="--tag-c: var(--orange)">under construction</span>
-          </p>
+          <p class="reveal">builds small things.</p>
         </div>
       </section>
 
@@ -428,38 +430,31 @@
         <div class="wrap">
           <p class="section-label reveal">projects</p>
 
-          <a class="proj-row reveal" href="/battleship">
-            <div class="icon icon-radar"></div>
-            <div>
+          <div class="projects-grid">
+            <a class="proj-tile reveal" href="/battleship" style="--tile-c: var(--pink)">
+              <div class="icon icon-radar"></div>
               <div class="head">
                 <h2>battleship</h2>
                 <span class="tag" style="--tag-c: var(--pink)">live</span>
               </div>
-              <p>Radar-screen naval combat. Full retro terminal HUD.</p>
-            </div>
-          </a>
+            </a>
 
-          <a class="proj-row reveal" href="/goodboy">
-            <div class="icon icon-paw"><i></i><i></i><i></i></div>
-            <div>
+            <a class="proj-tile reveal" href="/goodboy" style="--tile-c: var(--cyan)">
+              <div class="icon icon-paw"><i></i><i></i><i></i></div>
               <div class="head">
                 <h2>good boy</h2>
                 <span class="tag" style="--tag-c: var(--cyan)">live</span>
               </div>
-              <p>A very small page about a very good boy.</p>
-            </div>
-          </a>
+            </a>
 
-          <a class="proj-row reveal" href="/poker">
-            <div class="icon icon-node"><i></i><i></i><i></i></div>
-            <div>
+            <a class="proj-tile reveal" href="/poker" style="--tile-c: var(--violet)">
+              <div class="icon icon-node"><i></i><i></i><i></i></div>
               <div class="head">
                 <h2 style="color: var(--violet)">poker</h2>
                 <span class="tag" style="--tag-c: var(--violet)">live</span>
               </div>
-              <p>Heads-up hold'em against a bot that estimates its odds by simulation.</p>
-            </div>
-          </a>
+            </a>
+          </div>
         </div>
       </section>
     </main>
