@@ -1329,6 +1329,90 @@
         border-color: var(--green-dim);
         background: rgba(26, 255, 122, 0.06);
       }
+
+      /* ── PLAY VS COMPUTER PAGE ── */
+      #page-vsbot {
+        --cell: 32px;
+        --gap: 2px;
+        flex-direction: column;
+        overflow: auto;
+      }
+      .vsbot-empty {
+        margin: auto;
+        max-width: 420px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding: 48px;
+      }
+      .vsbot-empty .page-title {
+        margin: 0;
+      }
+      .vsbot-empty p {
+        color: var(--text-dim);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .vsbot-match {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        padding: 24px;
+        justify-content: center;
+      }
+      .vb-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        flex: 0 0 auto;
+      }
+      .vb-turn-indicator {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-display);
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+      .vb-turn-indicator.you {
+        color: var(--green);
+      }
+      .vb-turn-indicator.computer {
+        color: var(--amber);
+      }
+      .vb-turn-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 8px currentColor;
+      }
+      .cell.ship-here:not(.hit):not(.miss) {
+        background: rgba(0, 207, 255, 0.1);
+        border-color: var(--cyan-dim);
+      }
+      .vb-log {
+        max-height: 130px;
+        overflow-y: auto;
+        font-size: 11px;
+        line-height: 1.7;
+        color: var(--text-dim);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .vb-log .sunk {
+        color: var(--red);
+      }
+      .vb-log .hit {
+        color: var(--amber);
+      }
     </style>
   </head>
   <body>
@@ -1345,6 +1429,9 @@
         </button>
         <button class="nav-btn" id="nav-place" onclick="showPage('place')">
           // PLACEMENT
+        </button>
+        <button class="nav-btn" id="nav-vsbot" onclick="showPage('vsbot')">
+          // PLAY
         </button>
       </nav>
       <div class="status-bar">
@@ -1725,6 +1812,14 @@
         <div class="place-actions">
           <button
             class="place-btn primary"
+            id="place-vsbot-btn"
+            onclick="vbBeginMatch()"
+            disabled
+          >
+            ▶ Play vs Computer
+          </button>
+          <button
+            class="place-btn primary"
             id="place-done-btn"
             onclick="finalizePlacement()"
             disabled
@@ -1736,6 +1831,76 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- PLAY VS COMPUTER PAGE -->
+    <div id="page-vsbot" class="page">
+      <div id="vsbot-empty" class="vsbot-empty">
+        <div class="page-title">// PLAY VS COMPUTER</div>
+        <p>
+          Place your fleet on the Placement page first, then hit
+          "Play vs Computer" there to start a full match -- the
+          computer places its own hidden fleet and fires back at you
+          using the same probability engine as the tactical advisor.
+        </p>
+        <button class="place-btn primary" onclick="showPage('place')">
+          Go to Placement
+        </button>
+      </div>
+
+      <div id="vsbot-match" class="vsbot-match" style="display: none">
+        <div class="vb-col">
+          <div class="grid-header">
+            <div class="grid-label">// ENEMY WATERS</div>
+            <div class="vb-turn-indicator" id="vb-turn-indicator">
+              <div class="vb-turn-dot"></div>
+              <span id="vb-turn-text">YOUR TURN</span>
+            </div>
+          </div>
+          <div class="grid-outer">
+            <div class="grid-col-labels" id="vb-enemy-col-labels"></div>
+            <div class="grid-rows" id="vb-enemy-rows"></div>
+          </div>
+          <div class="panel-section" style="width: 100%">
+            <div class="panel-section-title">// Computer's Fleet</div>
+            <div id="vb-computer-fleet-status"></div>
+          </div>
+        </div>
+
+        <div class="vb-col">
+          <div class="grid-header">
+            <div class="grid-label">// YOUR FLEET</div>
+          </div>
+          <div class="grid-outer">
+            <div class="grid-col-labels" id="vb-your-col-labels"></div>
+            <div class="grid-rows" id="vb-your-rows"></div>
+          </div>
+          <div class="panel-section" style="width: 100%">
+            <div class="panel-section-title">// Your Fleet</div>
+            <div id="vb-your-fleet-status"></div>
+          </div>
+        </div>
+
+        <div class="panel-section" style="width: 100%; max-width: 720px">
+          <div class="panel-section-title">// Battle Log</div>
+          <div class="vb-log" id="vb-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VS COMPUTER: Win/Lose Overlay -->
+    <div class="win-overlay" id="vb-win-overlay">
+      <div class="win-title" id="vb-win-title">VICTORY</div>
+      <div class="win-sub" id="vb-win-sub"></div>
+      <div class="win-stats" id="vb-win-stats"></div>
+      <button class="win-btn" onclick="vbRematch()">Rematch</button>
+      <button
+        class="win-btn"
+        onclick="vbNewFleet()"
+        style="margin-top: 8px; background: transparent"
+      >
+        Place New Fleet
+      </button>
     </div>
 
     <script>
@@ -2620,8 +2785,11 @@
             ? "nav-play"
             : name === "tips"
               ? "nav-tips"
-              : "nav-place";
+              : name === "vsbot"
+                ? "nav-vsbot"
+                : "nav-place";
         document.getElementById(navId).classList.add("active");
+        if (name === "vsbot") vbRefreshVisibility();
       }
 
       // ════════════════════════════════════════════
@@ -2974,6 +3142,7 @@
       function updateDoneButton() {
         const allPlaced = pState.ships.every((s) => s.placed);
         document.getElementById("place-done-btn").disabled = !allPlaced;
+        document.getElementById("place-vsbot-btn").disabled = !allPlaced;
       }
 
       function updatePlaceAdvice(r, c) {
@@ -3067,6 +3236,423 @@
       }
 
       // ════════════════════════════════════════════
+      // PLAY VS COMPUTER
+      //
+      // A self-contained match engine, independent of the manual advisor
+      // above (state/pState untouched). Reuses the same hunt/target
+      // probability algorithm -- copied here in parameterized form (vb*
+      // names) rather than refactoring the original, so the existing
+      // advisor page can't be broken by this addition.
+      // ════════════════════════════════════════════
+      let vb = null;
+
+      function vbEmptyGrid(fill) {
+        return Array.from({ length: ROWS }, () => Array(COLS).fill(fill));
+      }
+
+      function cellName(r, c) {
+        return ROW_LABELS[r] + COL_LABELS[c];
+      }
+
+      function vbRandomPlaceFleet() {
+        const grid = vbEmptyGrid(null);
+        const ships = SHIPS.map((s) => ({ ...s, cells: [], hits: 0, sunk: false }));
+        const order = ships.slice().sort((a, b) => b.size - a.size);
+        for (const ship of order) {
+          let placed = false;
+          let guard = 0;
+          while (!placed && guard < 5000) {
+            guard++;
+            const dir = Math.random() < 0.5 ? "H" : "V";
+            const r = Math.floor(Math.random() * ROWS);
+            const c = Math.floor(Math.random() * COLS);
+            const cells = [];
+            let ok = true;
+            for (let k = 0; k < ship.size; k++) {
+              const rr = dir === "V" ? r + k : r;
+              const cc = dir === "H" ? c + k : c;
+              if (rr >= ROWS || cc >= COLS || grid[rr][cc] !== null) {
+                ok = false;
+                break;
+              }
+              cells.push([rr, cc]);
+            }
+            if (ok) {
+              cells.forEach(([rr, cc]) => {
+                grid[rr][cc] = true;
+              });
+              ship.cells = cells;
+              placed = true;
+            }
+          }
+        }
+        return ships;
+      }
+
+      function vbGetActiveCluster(hitCells) {
+        if (hitCells.length === 0) return [];
+        const visited = new Set();
+        let largest = [];
+        for (const [sr, sc] of hitCells) {
+          const key = `${sr},${sc}`;
+          if (visited.has(key)) continue;
+          const comp = [];
+          const queue = [[sr, sc]];
+          while (queue.length) {
+            const [cr, cc] = queue.shift();
+            const k = `${cr},${cc}`;
+            if (visited.has(k)) continue;
+            visited.add(k);
+            comp.push([cr, cc]);
+            for (const [dr, dc] of [
+              [-1, 0],
+              [1, 0],
+              [0, -1],
+              [0, 1],
+            ]) {
+              const nr = cr + dr,
+                nc = cc + dc;
+              if (
+                hitCells.some(([hr, hc]) => hr === nr && hc === nc) &&
+                !visited.has(`${nr},${nc}`)
+              )
+                queue.push([nr, nc]);
+            }
+          }
+          if (comp.length > largest.length) largest = comp;
+        }
+        return largest;
+      }
+
+      function vbDetectAxis(cluster) {
+        if (cluster.length < 2) return null;
+        const allSameRow = cluster.every(([r]) => r === cluster[0][0]);
+        const allSameCol = cluster.every(([, c]) => c === cluster[0][1]);
+        if (allSameRow) return "H";
+        if (allSameCol) return "V";
+        return null;
+      }
+
+      function vbCanPlaceHunt(g, r, c, size, dir) {
+        for (let k = 0; k < size; k++) {
+          const rr = dir === "V" ? r + k : r;
+          const cc = dir === "H" ? c + k : c;
+          if (g[rr][cc] === "miss") return false;
+        }
+        return true;
+      }
+
+      function vbCanPlaceTarget(g, r, c, size, dir, cluster) {
+        const cells = [];
+        for (let k = 0; k < size; k++) {
+          const rr = dir === "V" ? r + k : r;
+          const cc = dir === "H" ? c + k : c;
+          if (g[rr][cc] === "miss") return false;
+          cells.push([rr, cc]);
+        }
+        return cluster.every(([hr, hc]) =>
+          cells.some(([rr, cc]) => rr === hr && cc === hc),
+        );
+      }
+
+      function vbComputeProbabilities(g, remainingSizes, hitCells) {
+        const counts = vbEmptyGrid(0);
+        const cluster = vbGetActiveCluster(hitCells);
+        if (cluster.length > 0) {
+          const axis = vbDetectAxis(cluster);
+          for (const size of remainingSizes) {
+            const directions = axis ? [axis] : ["H", "V"];
+            for (const dir of directions) {
+              const rSpan = dir === "H" ? 1 : size;
+              const cSpan = dir === "H" ? size : 1;
+              for (let r = 0; r <= ROWS - rSpan; r++) {
+                for (let c = 0; c <= COLS - cSpan; c++) {
+                  if (vbCanPlaceTarget(g, r, c, size, dir, cluster)) {
+                    for (let k = 0; k < size; k++) {
+                      const rr = dir === "V" ? r + k : r;
+                      const cc = dir === "H" ? c + k : c;
+                      counts[rr][cc]++;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          for (const size of remainingSizes) {
+            for (let r = 0; r < ROWS; r++) {
+              for (let c = 0; c <= COLS - size; c++) {
+                if (vbCanPlaceHunt(g, r, c, size, "H"))
+                  for (let k = 0; k < size; k++) counts[r][c + k]++;
+              }
+            }
+            for (let r = 0; r <= ROWS - size; r++) {
+              for (let c = 0; c < COLS; c++) {
+                if (vbCanPlaceHunt(g, r, c, size, "V"))
+                  for (let k = 0; k < size; k++) counts[r + k][c]++;
+              }
+            }
+          }
+        }
+        for (let r = 0; r < ROWS; r++)
+          for (let c = 0; c < COLS; c++)
+            if (g[r][c] !== "unknown") counts[r][c] = 0;
+        return counts;
+      }
+
+      function vbBestCell(counts, g) {
+        let best = -1,
+          cells = [];
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (g[r][c] !== "unknown") continue;
+            if (counts[r][c] > best) {
+              best = counts[r][c];
+              cells = [[r, c]];
+            } else if (counts[r][c] === best) {
+              cells.push([r, c]);
+            }
+          }
+        }
+        if (cells.length === 0) return null;
+        return cells[Math.floor(Math.random() * cells.length)];
+      }
+
+      function vbLog(html, cls) {
+        const el = document.getElementById("vb-log");
+        const line = document.createElement("div");
+        if (cls) line.className = cls;
+        line.innerHTML = html;
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+      }
+
+      function vbBuildGrid(colLabelsId, rowsId, onCellClick) {
+        const colLabels = document.getElementById(colLabelsId);
+        const gridRows = document.getElementById(rowsId);
+        colLabels.innerHTML = "";
+        gridRows.innerHTML = "";
+        COL_LABELS.forEach((l) => {
+          const d = document.createElement("div");
+          d.className = "grid-col-label";
+          d.textContent = l;
+          colLabels.appendChild(d);
+        });
+        for (let r = 0; r < ROWS; r++) {
+          const row = document.createElement("div");
+          row.className = "grid-row";
+          const label = document.createElement("div");
+          label.className = "grid-row-label";
+          label.textContent = ROW_LABELS[r];
+          row.appendChild(label);
+          for (let c = 0; c < COLS; c++) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.id = `${rowsId}-${r}-${c}`;
+            if (onCellClick) cell.addEventListener("click", () => onCellClick(r, c));
+            row.appendChild(cell);
+          }
+          gridRows.appendChild(row);
+        }
+      }
+
+      function buildVbGrids() {
+        vbBuildGrid("vb-enemy-col-labels", "vb-enemy-rows", (r, c) => vbHumanFire(r, c));
+        vbBuildGrid("vb-your-col-labels", "vb-your-rows", null);
+      }
+
+      function vbFleetStatusHTML(ships) {
+        return ships
+          .map((ship) => {
+            const blocks = Array.from({ length: ship.size }, (_, k) => {
+              const cls = ship.sunk ? "dead" : k < ship.hits ? "hit-hp" : "alive";
+              return `<div class="hp-block ${cls}"></div>`;
+            }).join("");
+            return `<div class="fleet-ship">
+              <div class="fleet-ship-name ${ship.sunk ? "sunk" : "active"}">${ship.name}</div>
+              <div class="fleet-ship-hp">${blocks}</div>
+            </div>`;
+          })
+          .join("");
+      }
+
+      function renderVsBot() {
+        if (!vb) return;
+
+        // Enemy waters: what you know about the computer's board, plus a
+        // suggested next strike (same probability engine as the advisor).
+        const compRemaining = vb.computer.ships.filter((s) => !s.sunk).map((s) => s.size);
+        const suggestion =
+          vb.turn === "human" && !vb.over
+            ? vbBestCell(vbComputeProbabilities(vb.enemyGrid, compRemaining, vb.enemyHitCells), vb.enemyGrid)
+            : null;
+
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const el = document.getElementById(`vb-enemy-rows-${r}-${c}`);
+            const v = vb.enemyGrid[r][c];
+            el.className = "cell" + (v === "hit" ? " hit" : v === "miss" ? " miss" : "");
+            if (suggestion && suggestion[0] === r && suggestion[1] === c) el.className += " suggested";
+          }
+        }
+
+        // Your fleet: fully visible ship outlines plus whatever the computer has hit.
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const el = document.getElementById(`vb-your-rows-${r}-${c}`);
+            const v = vb.yourGrid[r][c];
+            const onShip = vb.human.ships.some((s) => s.cells.some(([rr, cc]) => rr === r && cc === c));
+            el.className =
+              "cell" + (onShip ? " ship-here" : "") + (v === "hit" ? " hit" : v === "miss" ? " miss" : "");
+          }
+        }
+
+        document.getElementById("vb-computer-fleet-status").innerHTML = vbFleetStatusHTML(vb.computer.ships);
+        document.getElementById("vb-your-fleet-status").innerHTML = vbFleetStatusHTML(vb.human.ships);
+
+        const indicator = document.getElementById("vb-turn-indicator");
+        const turnText = document.getElementById("vb-turn-text");
+        if (vb.over) {
+          indicator.className = "vb-turn-indicator";
+          turnText.textContent = "GAME OVER";
+        } else if (vb.turn === "human") {
+          indicator.className = "vb-turn-indicator you";
+          turnText.textContent = "YOUR TURN";
+        } else {
+          indicator.className = "vb-turn-indicator computer";
+          turnText.textContent = "COMPUTER'S TURN";
+        }
+      }
+
+      function vbCheckWin() {
+        const compDone = vb.computer.ships.every((s) => s.sunk);
+        const humanDone = vb.human.ships.every((s) => s.sunk);
+        if (!compDone && !humanDone) return false;
+        vb.over = true;
+        const youWin = compDone;
+        document.getElementById("vb-win-title").textContent = youWin ? "VICTORY" : "DEFEAT";
+        document.getElementById("vb-win-sub").textContent = youWin
+          ? "You sank the entire computer fleet."
+          : "Your fleet has been destroyed.";
+        document.getElementById("vb-win-stats").innerHTML =
+          `SHOTS FIRED: ${vb.shotsHuman}<br/>COMPUTER SHOTS: ${vb.shotsComputer}`;
+        renderVsBot();
+        document.getElementById("vb-win-overlay").classList.add("visible");
+        return true;
+      }
+
+      function vbHumanFire(r, c) {
+        if (!vb || vb.over || vb.turn !== "human") return;
+        if (vb.enemyGrid[r][c] !== "unknown") return;
+        vb.shotsHuman++;
+        const ship = vb.computer.ships.find((s) => s.cells.some(([rr, cc]) => rr === r && cc === c));
+        if (ship) {
+          vb.enemyGrid[r][c] = "hit";
+          ship.hits++;
+          if (ship.hits === ship.size) {
+            ship.sunk = true;
+            vb.enemyHitCells = vb.enemyHitCells.filter(
+              ([hr, hc]) => !ship.cells.some(([sr, sc]) => sr === hr && sc === hc),
+            );
+            vbLog(`You fire ${cellName(r, c)} — HIT, sunk the ${ship.name}!`, "sunk");
+          } else {
+            vb.enemyHitCells.push([r, c]);
+            vbLog(`You fire ${cellName(r, c)} — HIT.`, "hit");
+          }
+        } else {
+          vb.enemyGrid[r][c] = "miss";
+          vbLog(`You fire ${cellName(r, c)} — miss.`);
+        }
+        renderVsBot();
+        if (vbCheckWin()) return;
+        vb.turn = "computer";
+        renderVsBot();
+        setTimeout(vbComputerFire, 650 + Math.random() * 450);
+      }
+
+      function vbComputerFire() {
+        if (!vb || vb.over || vb.turn !== "computer") return;
+        vb.shotsComputer++;
+        const remainingSizes = vb.human.ships.filter((s) => !s.sunk).map((s) => s.size);
+        const probs = vbComputeProbabilities(vb.yourGrid, remainingSizes, vb.yourHitCells);
+        const move = vbBestCell(probs, vb.yourGrid);
+        if (!move) return; // shouldn't happen before game end
+        const [r, c] = move;
+        const ship = vb.human.ships.find((s) => s.cells.some(([rr, cc]) => rr === r && cc === c));
+        if (ship) {
+          vb.yourGrid[r][c] = "hit";
+          ship.hits++;
+          if (ship.hits === ship.size) {
+            ship.sunk = true;
+            vb.yourHitCells = vb.yourHitCells.filter(
+              ([hr, hc]) => !ship.cells.some(([sr, sc]) => sr === hr && sc === hc),
+            );
+            vbLog(`Computer fires ${cellName(r, c)} — HIT, sunk your ${ship.name}!`, "sunk");
+          } else {
+            vb.yourHitCells.push([r, c]);
+            vbLog(`Computer fires ${cellName(r, c)} — HIT on your fleet.`, "hit");
+          }
+        } else {
+          vb.yourGrid[r][c] = "miss";
+          vbLog(`Computer fires ${cellName(r, c)} — miss.`);
+        }
+        renderVsBot();
+        if (vbCheckWin()) return;
+        vb.turn = "human";
+        renderVsBot();
+      }
+
+      function vbStartMatch(humanShips) {
+        vb = {
+          human: { ships: humanShips.map((s) => ({ name: s.name, size: s.size, cells: s.cells.map((c) => c.slice()), hits: 0, sunk: false })) },
+          computer: { ships: vbRandomPlaceFleet() },
+          enemyGrid: vbEmptyGrid("unknown"),
+          enemyHitCells: [],
+          yourGrid: vbEmptyGrid("unknown"),
+          yourHitCells: [],
+          turn: "human",
+          shotsHuman: 0,
+          shotsComputer: 0,
+          over: false,
+        };
+        document.getElementById("vb-win-overlay").classList.remove("visible");
+        document.getElementById("vb-log").innerHTML = "";
+        vbLog("Match started. Your fleet is deployed, the computer's fleet is hidden. Your move.");
+        vbRefreshVisibility();
+        renderVsBot();
+      }
+
+      function vbBeginMatch() {
+        if (!pState.ships || !pState.ships.every((s) => s.placed)) return;
+        vbStartMatch(pState.ships);
+        showPage("vsbot");
+      }
+
+      function vbRematch() {
+        if (!vb) return;
+        vbStartMatch(vb.human.ships);
+      }
+
+      function vbNewFleet() {
+        vb = null;
+        document.getElementById("vb-win-overlay").classList.remove("visible");
+        resetPlacement();
+        showPage("place");
+      }
+
+      function vbRefreshVisibility() {
+        const empty = document.getElementById("vsbot-empty");
+        const match = document.getElementById("vsbot-match");
+        if (vb) {
+          empty.style.display = "none";
+          match.style.display = "flex";
+        } else {
+          empty.style.display = "flex";
+          match.style.display = "none";
+        }
+      }
+
+      // ════════════════════════════════════════════
       // INIT
       // ════════════════════════════════════════════
       state = initState();
@@ -3079,6 +3665,9 @@
       renderPlaceGrid();
       buildShipQueue();
       updatePlaceStatusLabel();
+
+      buildVbGrids();
+      vbRefreshVisibility();
     </script>
   </body>
 </html>
