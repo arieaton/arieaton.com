@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ari eaton</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1526'/%3E%3Ctext x='32' y='45' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='%23ff2e88' text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E" />
-    <meta name="description" content="Ari Eaton's projects — battleship, good boy, poker against a bot, and whatever's next." />
+    <meta name="description" content="Ari Eaton — quantitative analyst at State Street. Side projects: battleship, poker against a bot, and whatever's next." />
     <meta name="theme-color" content="#f7f1e4" />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://arieaton.com/" />
     <meta property="og:title" content="ari eaton" />
-    <meta property="og:description" content="Ari Eaton's projects — battleship, good boy, poker against a bot, and whatever's next." />
+    <meta property="og:description" content="Ari Eaton — quantitative analyst at State Street. Side projects: battleship, poker against a bot, and whatever's next." />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="ari eaton" />
-    <meta name="twitter:description" content="Ari Eaton's projects — battleship, good boy, poker against a bot, and whatever's next." />
+    <meta name="twitter:description" content="Ari Eaton — quantitative analyst at State Street. Side projects: battleship, poker against a bot, and whatever's next." />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -226,10 +226,81 @@
       }
       .about p {
         margin: 0;
-        font-size: clamp(1.3rem, 3.2vw, 1.8rem);
+        font-size: clamp(1.15rem, 2.6vw, 1.55rem);
         font-weight: 700;
-        line-height: 1.4;
-        max-width: 20ch;
+        line-height: 1.55;
+        max-width: 34ch;
+      }
+      .about .muted {
+        color: var(--dim);
+        font-weight: 400;
+      }
+      .tech-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 2rem;
+      }
+
+      /* ---------- experience ---------- */
+      .experience {
+        min-height: calc(100vh - var(--nav-h));
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 4rem 0;
+        border-top: 1px solid var(--line);
+      }
+      .exp-item {
+        padding: 1.6rem 0;
+        border-top: 1px solid var(--line);
+      }
+      .experience .exp-item:last-child {
+        border-bottom: 1px solid var(--line);
+      }
+      .exp-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .exp-head h2 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+      }
+      .exp-when {
+        font-size: 0.78rem;
+        color: var(--faint);
+        font-variant-numeric: tabular-nums;
+      }
+      .exp-roles {
+        list-style: none;
+        margin: 0.9rem 0 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+      .exp-roles li {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.88rem;
+        color: var(--dim);
+      }
+      .exp-roles li.current .exp-role {
+        color: var(--pink);
+        font-weight: 700;
+      }
+      .exp-date {
+        color: var(--faint);
+        font-size: 0.78rem;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
       }
 
       /* ---------- projects ---------- */
@@ -399,6 +470,7 @@
         <nav aria-label="Section">
           <a href="#home" data-target="home">home</a>
           <a href="#about" data-target="about">about</a>
+          <a href="#experience" data-target="experience">experience</a>
           <a href="#projects" data-target="projects">projects</a>
         </nav>
       </div>
@@ -418,7 +490,61 @@
       <section class="about" id="about">
         <div class="wrap">
           <p class="section-label reveal">about</p>
-          <p class="reveal">I like to build things.</p>
+          <p class="reveal">
+            I'm a quantitative analyst at State Street, working on electronic currency trading.
+            <span class="muted">Before that, computer science at Wesleyan. Based in New York.</span>
+          </p>
+          <div class="tech-row reveal">
+            <span class="tag" style="--tag-c: var(--pink)">Java</span>
+            <span class="tag" style="--tag-c: var(--orange)">JavaScript</span>
+            <span class="tag" style="--tag-c: var(--cyan)">C++</span>
+            <span class="tag" style="--tag-c: var(--violet)">MATLAB</span>
+            <span class="tag" style="--tag-c: var(--pink)">React</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="experience" id="experience">
+        <div class="wrap">
+          <p class="section-label reveal">experience</p>
+
+          <div class="exp-item reveal">
+            <div class="exp-head">
+              <h2>State Street</h2>
+              <span class="exp-when">2023 — now</span>
+            </div>
+            <ul class="exp-roles">
+              <li class="current">
+                <span class="exp-role">AVP, Quant, eFX</span>
+                <span class="exp-date">Sep 2026 — now</span>
+              </li>
+              <li>
+                <span class="exp-role">Quant, eFX</span>
+                <span class="exp-date">Jun 2025 — Sep 2026</span>
+              </li>
+              <li>
+                <span class="exp-role">Professional Development Program</span>
+                <span class="exp-date">Jul 2024 — Jun 2025</span>
+              </li>
+              <li>
+                <span class="exp-role">Intern</span>
+                <span class="exp-date">Summer 2023</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="exp-item reveal">
+            <div class="exp-head">
+              <h2>Wesleyan University</h2>
+              <span class="exp-when">2020 — 2024</span>
+            </div>
+            <ul class="exp-roles">
+              <li>
+                <span class="exp-role">BA, Computer Science</span>
+                <span class="exp-date"></span>
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
 
