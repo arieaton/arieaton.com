@@ -18,10 +18,21 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Loaded non-blocking: the page paints immediately in the fallback mono
+         and swaps to JetBrains Mono when it arrives, instead of holding first
+         paint on a third-party request. -->
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap"
-      rel="stylesheet"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap"
+      />
+    </noscript>
 
     <style>
       :root {
@@ -45,6 +56,17 @@
       }
       html {
         color-scheme: light;
+        /* Soft snap: 'proximity' only pulls you in when you're already close to a
+           section edge, so a deliberate mid-section stop is respected and a fast
+           fling can still skip straight past. 'mandatory' would trap the scroll. */
+        scroll-snap-type: y proximity;
+        scroll-behavior: smooth;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-snap-type: none;
+          scroll-behavior: auto;
+        }
       }
 
       body {
@@ -62,6 +84,45 @@
 
       a {
         color: inherit;
+      }
+
+      /* Cursor spotlight: a soft accent glow that trails the pointer. Sits behind
+         all content (content is lifted to z-index 1) so it can never wash out text.
+         Pointer-only -- there's no cursor to follow on touch. */
+      .spotlight {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: radial-gradient(
+          420px circle at var(--mx, 50%) var(--my, 20%),
+          rgba(255, 46, 136, 0.13),
+          rgba(139, 92, 246, 0.05) 45%,
+          transparent 70%
+        );
+      }
+      @media (hover: none), (prefers-reduced-motion: reduce) {
+        .spotlight {
+          display: none;
+        }
+      }
+
+      /* Fine grain, for a bit of printed-paper tooth over the flat cream. */
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+        opacity: 0.4;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.18'/%3E%3C/svg%3E");
+      }
+
+      .site-nav,
+      main,
+      footer {
+        position: relative;
+        z-index: 1;
       }
 
       .wrap {
@@ -122,11 +183,19 @@
 
       section {
         scroll-margin-top: var(--nav-h);
+        scroll-snap-align: start;
+        /* 'normal' (not 'always') lets a fast flick skip a section instead of
+           forcing a stop at every one -- the difference between soft and sticky. */
+        scroll-snap-stop: normal;
       }
 
       /* ---------- hero ---------- */
       .hero {
         min-height: calc(100vh - var(--nav-h));
+        /* svh = the *small* viewport height, i.e. with mobile browser chrome
+           showing. Plain vh is the large one, so on phones a 100vh section gets
+           cut off until you scroll and the address bar collapses. */
+        min-height: calc(100svh - var(--nav-h));
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -218,6 +287,7 @@
       /* ---------- about ---------- */
       .about {
         min-height: calc(100vh - var(--nav-h));
+        min-height: calc(100svh - var(--nav-h));
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -245,6 +315,7 @@
       /* ---------- experience ---------- */
       .experience {
         min-height: calc(100vh - var(--nav-h));
+        min-height: calc(100svh - var(--nav-h));
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -306,6 +377,7 @@
       /* ---------- projects ---------- */
       .projects {
         min-height: calc(100vh - var(--nav-h));
+        min-height: calc(100svh - var(--nav-h));
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -460,10 +532,65 @@
       footer a:hover {
         color: var(--pink);
       }
+
+      /* ---------- mobile ---------- */
+      @media (max-width: 640px) {
+        .site-nav nav {
+          gap: 1rem;
+          font-size: 0.72rem;
+        }
+        .site-nav nav a {
+          /* bigger tap target than the text alone */
+          padding: 0.5rem 0 0.35rem;
+        }
+        .logo {
+          font-size: 0.92rem;
+        }
+        .hero,
+        .about,
+        .experience,
+        .projects {
+          padding: 3rem 0;
+        }
+        .scroll-cue {
+          margin-top: 2rem;
+        }
+        .exp-head,
+        .exp-roles li {
+          /* stack the role and its dates instead of stranding them apart */
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.15rem;
+        }
+        .projects-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 400px) {
+        .site-nav nav {
+          gap: 0.8rem;
+        }
+        /* the logo already goes home -- drop the redundant link when space is tight */
+        .site-nav nav a[data-target="home"] {
+          display: none;
+        }
+        .projects-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      /* The grain is a full-screen fixed layer; on touch/low-power devices that
+         repaint cost during scroll isn't worth the texture. */
+      @media (pointer: coarse), (max-width: 640px) {
+        body::after {
+          display: none;
+        }
+      }
     </style>
   </head>
 
   <body>
+    <div class="spotlight" id="spotlight" aria-hidden="true"></div>
+
     <header class="site-nav">
       <div class="wrap">
         <a class="logo" href="#home">eaton</a>
@@ -492,7 +619,7 @@
           <p class="section-label reveal">about</p>
           <p class="reveal">
             I'm a quantitative analyst at State Street, working on electronic currency trading.
-            <span class="muted">Before that, computer science at Wesleyan. Based in New York.</span>
+            <span class="muted">Before that, I studied computer science at Wesleyan — pre-AI, when you still had to write the code yourself. I live in Boston.</span>
           </p>
           <div class="tech-row reveal">
             <span class="tag" style="--tag-c: var(--pink)">Java</span>
@@ -607,30 +734,57 @@
           });
           if (nav) nav.classList.add("is-condensed");
         } else {
+          // Element positions are measured once (and on resize / font swap) rather
+          // than every frame. Reading getBoundingClientRect during scroll forces a
+          // synchronous layout on each element, every frame -- the usual cause of
+          // scroll jank. Here the scroll handler only does arithmetic.
+          var metrics = [];
+          var heroMetric = null;
+          var vh = window.innerHeight;
           var ticking = false;
+          var condensed = null;
+
+          function measure() {
+            vh = window.innerHeight;
+            var sy = window.scrollY;
+            metrics = reveals.map(function (el) {
+              return { el: el, top: el.getBoundingClientRect().top + sy };
+            });
+            if (heroInner && heroSection) {
+              var hr = heroSection.getBoundingClientRect();
+              heroMetric = { top: hr.top + sy, height: hr.height || 1 };
+            }
+          }
 
           function update() {
-            var vh = window.innerHeight;
+            var sy = window.scrollY;
 
             // hero recedes as you scroll past it, rather than just vanishing
-            if (heroInner && heroSection) {
-              var heroRect = heroSection.getBoundingClientRect();
-              var p = clamp(-heroRect.top / (heroRect.height * 0.7 || 1), 0, 1);
+            if (heroInner && heroMetric) {
+              var p = clamp((sy - heroMetric.top) / (heroMetric.height * 0.7), 0, 1);
               heroInner.style.opacity = String(1 - p * 0.85);
-              heroInner.style.transform = "translateY(" + (p * -50).toFixed(1) + "px) scale(" + (1 - p * 0.08).toFixed(3) + ")";
+              heroInner.style.transform =
+                "translateY(" + (p * -50).toFixed(1) + "px) scale(" + (1 - p * 0.08).toFixed(3) + ")";
             }
 
             // each .reveal scrubs in/out with actual scroll position
-            reveals.forEach(function (el) {
-              var rect = el.getBoundingClientRect();
-              var start = vh * 0.92;
-              var end = vh * 0.55;
-              var prog = clamp((start - rect.top) / (start - end || 1), 0, 1);
-              el.style.opacity = String(prog);
-              el.style.transform = "translateY(" + ((1 - prog) * 22).toFixed(1) + "px)";
-            });
+            var start = vh * 0.92;
+            var end = vh * 0.55;
+            var span = start - end || 1;
+            for (var i = 0; i < metrics.length; i++) {
+              var m = metrics[i];
+              var viewportTop = m.top - sy;
+              var prog = clamp((start - viewportTop) / span, 0, 1);
+              m.el.style.opacity = String(prog);
+              m.el.style.transform = "translateY(" + ((1 - prog) * 22).toFixed(1) + "px)";
+            }
 
-            nav && nav.classList.toggle("is-condensed", window.scrollY > 30);
+            // only touch the DOM when the condensed state actually flips
+            var wantCondensed = sy > 30;
+            if (nav && wantCondensed !== condensed) {
+              nav.classList.toggle("is-condensed", wantCondensed);
+              condensed = wantCondensed;
+            }
             ticking = false;
           }
 
@@ -641,9 +795,40 @@
             }
           }
 
+          function remeasure() {
+            measure();
+            update();
+          }
+
           window.addEventListener("scroll", onScroll, { passive: true });
-          window.addEventListener("resize", onScroll);
-          update();
+          window.addEventListener("resize", remeasure);
+          // the webfont swapping in reflows everything, so re-measure after it lands
+          if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+          remeasure();
+
+          // cursor spotlight -- also rAF-throttled, and only writes two CSS vars
+          var spotlight = document.getElementById("spotlight");
+          if (spotlight && window.matchMedia("(hover: hover)").matches) {
+            var mx = 0,
+              my = 0,
+              spotTicking = false;
+            window.addEventListener(
+              "pointermove",
+              function (e) {
+                mx = e.clientX;
+                my = e.clientY;
+                if (!spotTicking) {
+                  requestAnimationFrame(function () {
+                    spotlight.style.setProperty("--mx", mx + "px");
+                    spotlight.style.setProperty("--my", my + "px");
+                    spotTicking = false;
+                  });
+                  spotTicking = true;
+                }
+              },
+              { passive: true }
+            );
+          }
         }
 
         var navLinks = document.querySelectorAll(".site-nav nav a");
