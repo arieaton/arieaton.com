@@ -531,7 +531,10 @@
           "a flush", "a full house", "four of a kind", "a straight flush",
         ];
 
-        function estimateEquity(heroHole, board, trials) {
+        // oppFloor (0-0.9, same scale as preflopStrength): when set, biases the
+        // simulated opponent hand toward stronger holdings instead of pure random --
+        // a crude stand-in for "this player has been raising, so narrow their range."
+        function estimateEquity(heroHole, board, trials, oppFloor) {
           var used = {};
           heroHole.concat(board).forEach(function (c) { used[c.rank + c.suit] = true; });
           var rest = makeDeck().filter(function (c) { return !used[c.rank + c.suit]; });
@@ -540,6 +543,15 @@
             var deck = shuffle(rest.slice());
             var idx = 0;
             var oppHole = [deck[idx++], deck[idx++]];
+            if (oppFloor) {
+              var attempts = 0;
+              while (preflopStrength(oppHole) < oppFloor && attempts < 25) {
+                idx = 0;
+                deck = shuffle(rest.slice());
+                oppHole = [deck[idx++], deck[idx++]];
+                attempts++;
+              }
+            }
             var need = 5 - board.length;
             var fullBoard = board.concat(deck.slice(idx, idx + need));
             var heroScore = evaluate7(heroHole.concat(fullBoard)).score;
@@ -585,6 +597,7 @@
             toAct: null,
             minRaiseSize: BB,
             handNum: 0,
+            humanRaiseCount: 0,
           };
         }
 
@@ -667,6 +680,7 @@
             S.minRaiseSize = Math.max(S.minRaiseSize, raiseSize);
             S.acted = [false, false];
             S.acted[player] = true;
+            if (player === 0) S.humanRaiseCount++;
             var verb = S.bets[opp] > 0 || raiseSize < S.bets[player] ? "raise" : "bet";
             var allInNote = S.stacks[player] === 0 ? " (all in)" : "";
             log(who + " " + (player === 0 ? verb : verb + "s") + " to " + fmt(S.bets[player]) + allInNote + ".");
@@ -803,13 +817,21 @@
 
         function botAct() {
           if (S.stage === "over" || S.stage === "showdown" || S.toAct !== 1) return;
-          var eq = S.stage === "preflop" ? preflopStrength(S.hole[1]) : estimateEquity(S.hole[1], S.board, 350);
+
+          // Narrow the simulated opponent's range once they've shown aggression
+          // this hand -- a raiser is dealt from a stronger-than-random slice of
+          // hands, so equity against "literally anything" is too pessimistic.
+          var oppFloor = S.humanRaiseCount > 0 ? 0.6 : 0;
+          var trials = S.stage === "preflop" ? 500 : 450;
+          var eq = estimateEquity(S.hole[1], S.stage === "preflop" ? [] : S.board, trials, oppFloor);
 
           var toCall = S.bets[0] - S.bets[1];
           var canCheck = toCall <= 0;
           var potAfterCall = S.pot + Math.max(toCall, 0);
           var potOdds = toCall > 0 ? toCall / potAfterCall : 0;
           var allInTotal = S.bets[1] + S.stacks[1];
+          var effStack = Math.min(S.stacks[0] + S.bets[0], S.stacks[1] + S.bets[1]);
+          var shortStacked = S.stage === "preflop" && effStack <= BB * 10;
 
           var rand = Math.random();
           var bluff = rand < 0.07 && eq < 0.35;
@@ -817,6 +839,10 @@
           var action, amount;
           if (S.stacks[1] === 0) {
             action = "check"; // can't act further
+          } else if (shortStacked && (eq > 0.5 || bluff) && !canCheck) {
+            // classic heads-up short-stack strategy: shove rather than a soft raise
+            action = "raise";
+            amount = allInTotal;
           } else if (eq > 0.72 || bluff) {
             action = "raise";
             var sizeFactor = bluff ? 0.6 : 0.5 + eq * 0.6;
