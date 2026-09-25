@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dash</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1526'/%3E%3Ctext x='32' y='45' font-family='Arial,Helvetica,sans-serif' font-size='38' font-weight='700' fill='%23ff2e88' text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E" />
+    <meta name="description" content="Personal dashboard." />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#f7f1e4" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://api.open-meteo.com" />
+    <link rel="preconnect" href="https://api.frankfurter.dev" />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap"
+      />
+    </noscript>
+
+    <style>
+      :root {
+        --bg: #f7f1e4;
+        --surface: #ffffff;
+        --line: #e8dcc2;
+        --ink: #1c1526;
+        --dim: #574d63;
+        --faint: #8a7f95;
+        --pink: #ff2e88;
+        --orange: #ff7a1a;
+        --cyan: #00aec9;
+        --violet: #8b5cf6;
+        --up: #0f9d58;
+        --down: #e0443e;
+        --font: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        background-image: radial-gradient(circle, rgba(28, 21, 38, 0.06) 1px, transparent 1.4px);
+        background-size: 22px 22px;
+        color: var(--ink);
+        font-family: var(--font);
+      }
+      a {
+        color: inherit;
+      }
+      a:focus-visible {
+        outline: 2px solid var(--pink);
+        outline-offset: 3px;
+      }
+
+      header.bar {
+        border-bottom: 1px solid var(--line);
+      }
+      header.bar .bar-inner {
+        height: 60px;
+        padding: 0 clamp(1.25rem, 5vw, 5rem);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .logo {
+        font-weight: 800;
+        font-size: 1rem;
+        text-decoration: none;
+      }
+      .bar-links {
+        display: flex;
+        gap: 1.2rem;
+        font-size: 0.8rem;
+      }
+      .bar-links a {
+        text-decoration: none;
+        color: var(--faint);
+        border-bottom: 1px solid transparent;
+        padding-bottom: 2px;
+      }
+      .bar-links a:hover {
+        color: var(--pink);
+        border-bottom-color: var(--pink);
+      }
+
+      main {
+        padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 5rem) 4rem;
+        display: grid;
+        gap: 1.1rem;
+        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+        align-items: start;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 1.3rem 1.4rem;
+      }
+      .card-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      .card-title {
+        font-size: 0.66rem;
+        letter-spacing: 0.17em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+      .card-note {
+        font-size: 0.66rem;
+        color: var(--faint);
+      }
+
+      /* clock */
+      .clock-time {
+        font-size: clamp(2.6rem, 9vw, 3.6rem);
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+      .clock-sec {
+        color: var(--pink);
+      }
+      .clock-date {
+        margin-top: 0.6rem;
+        color: var(--dim);
+        font-size: 0.88rem;
+      }
+
+      /* weather */
+      .wx-row {
+        display: flex;
+        align-items: baseline;
+        gap: 0.9rem;
+      }
+      .wx-temp {
+        font-size: clamp(2.2rem, 7vw, 3rem);
+        font-weight: 800;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .wx-cond {
+        color: var(--cyan);
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .wx-meta {
+        margin-top: 0.8rem;
+        color: var(--dim);
+        font-size: 0.82rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem 1.2rem;
+      }
+
+      /* fx */
+      .fx-card {
+        grid-column: 1 / -1;
+      }
+      table.fx {
+        width: 100%;
+        border-collapse: collapse;
+        font-variant-numeric: tabular-nums;
+      }
+      table.fx th {
+        text-align: right;
+        font-size: 0.66rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--faint);
+        font-weight: 500;
+        padding: 0 0 0.6rem;
+      }
+      table.fx th:first-child,
+      table.fx td:first-child {
+        text-align: left;
+      }
+      table.fx td {
+        padding: 0.5rem 0;
+        border-top: 1px solid var(--line);
+        text-align: right;
+        font-size: 0.92rem;
+      }
+      .fx-pair {
+        font-weight: 700;
+      }
+      .fx-rate {
+        font-weight: 700;
+      }
+      .up {
+        color: var(--up);
+      }
+      .down {
+        color: var(--down);
+      }
+      .flat {
+        color: var(--faint);
+      }
+
+      .links-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .links-row a {
+        text-decoration: none;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--dim);
+      }
+      .links-row a:hover {
+        border-color: var(--pink);
+        color: var(--pink);
+      }
+
+      .state {
+        color: var(--faint);
+        font-size: 0.85rem;
+      }
+      .state.error {
+        color: var(--down);
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="bar">
+      <div class="bar-inner">
+        <a class="logo" href="/">eaton</a>
+        <nav class="bar-links">
+          <a href="/">home</a>
+          <a href="/resume">resume</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <div class="card-head">
+          <span class="card-title">boston</span>
+          <span class="card-note" id="tz-note"></span>
+        </div>
+        <div class="clock-time" id="clock">--:--<span class="clock-sec">:--</span></div>
+        <div class="clock-date" id="date">&nbsp;</div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <span class="card-title">weather</span>
+          <span class="card-note" id="wx-updated"></span>
+        </div>
+        <div id="wx-body"><p class="state">loading…</p></div>
+      </section>
+
+      <section class="card fx-card">
+        <div class="card-head">
+          <span class="card-title">fx</span>
+          <!-- Labeled honestly: these are ECB daily reference rates, not a live
+               feed. Someone who trades FX would spot the difference immediately. -->
+          <span class="card-note" id="fx-note">ECB reference · daily</span>
+        </div>
+        <div id="fx-body"><p class="state">loading…</p></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><span class="card-title">mine</span></div>
+        <div class="links-row">
+          <a href="/poker">poker</a>
+          <a href="/battleship">battleship</a>
+          <a href="/goodboy">good boy</a>
+          <a href="/resume">resume</a>
+          <a href="https://github.com/arieaton/arieaton.com">repo</a>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        // ---------- clock ----------
+        var clockEl = document.getElementById("clock");
+        var dateEl = document.getElementById("date");
+        document.getElementById("tz-note").textContent = "America/New_York";
+
+        function pad(n) {
+          return n < 10 ? "0" + n : String(n);
+        }
+        function tickClock() {
+          // always render Boston time, wherever the browser happens to be
+          var parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/New_York",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          }).formatToParts(new Date());
+          var get = function (t) {
+            var p = parts.find(function (x) {
+              return x.type === t;
+            });
+            return p ? p.value : "00";
+          };
+          clockEl.innerHTML =
+            get("hour") + ":" + get("minute") + '<span class="clock-sec">:' + get("second") + "</span>";
+          dateEl.textContent = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/New_York",
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          }).format(new Date());
+        }
+        tickClock();
+        setInterval(tickClock, 1000);
+
+        // ---------- weather ----------
+        // WMO weather interpretation codes
+        var WMO = {
+          0: "clear",
+          1: "mostly clear",
+          2: "partly cloudy",
+          3: "overcast",
+          45: "fog",
+          48: "freezing fog",
+          51: "light drizzle",
+          53: "drizzle",
+          55: "heavy drizzle",
+          56: "freezing drizzle",
+          57: "freezing drizzle",
+          61: "light rain",
+          63: "rain",
+          65: "heavy rain",
+          66: "freezing rain",
+          67: "freezing rain",
+          71: "light snow",
+          73: "snow",
+          75: "heavy snow",
+          77: "snow grains",
+          80: "light showers",
+          81: "showers",
+          82: "heavy showers",
+          85: "snow showers",
+          86: "snow showers",
+          95: "thunderstorm",
+          96: "thunderstorm with hail",
+          99: "thunderstorm with hail",
+        };
+
+        function loadWeather() {
+          var url =
+            "https://api.open-meteo.com/v1/forecast?latitude=42.3601&longitude=-71.0589" +
+            "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m" +
+            "&daily=temperature_2m_max,temperature_2m_min" +
+            "&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FNew_York&forecast_days=1";
+          fetch(url)
+            .then(function (r) {
+              if (!r.ok) throw new Error("HTTP " + r.status);
+              return r.json();
+            })
+            .then(function (d) {
+              var c = d.current || {};
+              var day = d.daily || {};
+              var cond = WMO[c.weather_code] || "—";
+              var hi = day.temperature_2m_max ? Math.round(day.temperature_2m_max[0]) : null;
+              var lo = day.temperature_2m_min ? Math.round(day.temperature_2m_min[0]) : null;
+              var html =
+                '<div class="wx-row"><span class="wx-temp">' +
+                Math.round(c.temperature_2m) +
+                "°</span><span class=\"wx-cond\">" +
+                cond +
+                "</span></div><div class=\"wx-meta\">" +
+                "<span>feels " +
+                Math.round(c.apparent_temperature) +
+                "°</span>" +
+                (hi !== null ? "<span>high " + hi + "° · low " + lo + "°</span>" : "") +
+                "<span>wind " +
+                Math.round(c.wind_speed_10m) +
+                " mph</span></div>";
+              document.getElementById("wx-body").innerHTML = html;
+              document.getElementById("wx-updated").textContent = "just now";
+            })
+            .catch(function (e) {
+              document.getElementById("wx-body").innerHTML =
+                '<p class="state error">weather unavailable (' + e.message + ")</p>";
+            });
+        }
+
+        // ---------- fx ----------
+        // Quoted the way the market quotes them: EUR/GBP/AUD/NZD are the base
+        // currency (XXXUSD); everything else is USDXXX. Frankfurter returns
+        // everything relative to USD, so the first group needs inverting.
+        var PAIRS = [
+          { sym: "EURUSD", ccy: "EUR", invert: true, dp: 4 },
+          { sym: "GBPUSD", ccy: "GBP", invert: true, dp: 4 },
+          { sym: "AUDUSD", ccy: "AUD", invert: true, dp: 4 },
+          { sym: "USDJPY", ccy: "JPY", invert: false, dp: 2 },
+          { sym: "USDCHF", ccy: "CHF", invert: false, dp: 4 },
+          { sym: "USDCAD", ccy: "CAD", invert: false, dp: 4 },
+        ];
+
+        function quote(rate, p) {
+          return p.invert ? 1 / rate : rate;
+        }
+
+        function loadFx() {
+          var syms = PAIRS.map(function (p) {
+            return p.ccy;
+          }).join(",");
+          var start = new Date(Date.now() - 12 * 864e5).toISOString().slice(0, 10);
+          fetch("https://api.frankfurter.dev/v1/" + start + "..?base=USD&symbols=" + syms)
+            .then(function (r) {
+              if (!r.ok) throw new Error("HTTP " + r.status);
+              return r.json();
+            })
+            .then(function (d) {
+              var dates = Object.keys(d.rates || {}).sort();
+              if (dates.length < 1) throw new Error("no data");
+              var last = d.rates[dates[dates.length - 1]];
+              var prev = dates.length > 1 ? d.rates[dates[dates.length - 2]] : null;
+
+              var rows = PAIRS.map(function (p) {
+                if (last[p.ccy] == null) return "";
+                var now = quote(last[p.ccy], p);
+                var cell = "<span class='flat'>—</span>";
+                if (prev && prev[p.ccy] != null) {
+                  var before = quote(prev[p.ccy], p);
+                  var diff = now - before;
+                  var pct = (diff / before) * 100;
+                  var cls = Math.abs(pct) < 0.005 ? "flat" : diff > 0 ? "up" : "down";
+                  var arrow = Math.abs(pct) < 0.005 ? "" : diff > 0 ? "▲ " : "▼ ";
+                  cell =
+                    "<span class='" +
+                    cls +
+                    "'>" +
+                    arrow +
+                    (diff > 0 ? "+" : "") +
+                    pct.toFixed(2) +
+                    "%</span>";
+                }
+                return (
+                  "<tr><td class='fx-pair'>" +
+                  p.sym +
+                  "</td><td class='fx-rate'>" +
+                  now.toFixed(p.dp) +
+                  "</td><td>" +
+                  cell +
+                  "</td></tr>"
+                );
+              }).join("");
+
+              document.getElementById("fx-body").innerHTML =
+                "<table class='fx'><thead><tr><th>pair</th><th>rate</th><th>1d</th></tr></thead><tbody>" +
+                rows +
+                "</tbody></table>";
+              document.getElementById("fx-note").textContent =
+                "ECB reference · " + dates[dates.length - 1];
+            })
+            .catch(function (e) {
+              document.getElementById("fx-body").innerHTML =
+                '<p class="state error">fx unavailable (' + e.message + ")</p>";
+            });
+        }
+
+        loadWeather();
+        loadFx();
+        // refresh while the tab is left open, but only when it's actually visible
+        setInterval(function () {
+          if (!document.hidden) loadWeather();
+        }, 15 * 60 * 1000);
+        setInterval(function () {
+          if (!document.hidden) loadFx();
+        }, 60 * 60 * 1000);
+      })();
+    </script>
+  </body>
+</html>
