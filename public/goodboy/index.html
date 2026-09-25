@@ -49,10 +49,13 @@
       header {
         border-bottom: 1px solid var(--line);
       }
+      /* Same inset and height as every other page's top bar, so the wordmark
+         stays put when you move between pages. */
       header .wrap {
-        max-width: 880px;
-        margin: 0 auto;
-        padding: 1.4rem clamp(1.25rem, 4vw, 2rem);
+        height: 60px;
+        padding: 0 clamp(1.25rem, 5vw, 5rem);
+        display: flex;
+        align-items: center;
       }
       .logo {
         font-weight: 800;

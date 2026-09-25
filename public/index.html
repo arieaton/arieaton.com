@@ -801,26 +801,38 @@
           remeasure();
 
           initCursorTrail();
-          initSoftSettle();
+          initScrollPaging();
         }
 
-        // ---- soft settle ------------------------------------------------------
-        // Replaces CSS scroll-snap. Nothing happens while you're scrolling. Once
-        // scrolling stops, if you've come to rest *close* to a section boundary it
-        // eases the rest of the way; past that threshold it leaves you alone, so a
-        // deliberate mid-section stop stays put. Any new input cancels the glide.
-        function initSoftSettle() {
+        // ---- scroll paging ----------------------------------------------------
+        // Treats a scroll gesture as a direction vote rather than a literal
+        // displacement: when the gesture (and any native momentum) ends, carry
+        // through to the next section in the direction you were travelling, at a
+        // speed derived from how hard you flicked. A gentle nudge that only
+        // drifted just past a boundary lands back on it instead of paging a whole
+        // section further. Desktop pointers only -- touch keeps native scrolling,
+        // which already has its own momentum and doesn't take kindly to being
+        // driven from JS.
+        function initScrollPaging() {
           var sections = Array.prototype.slice.call(document.querySelectorAll("main section[id]"));
           if (!sections.length) return;
+          if (window.matchMedia("(pointer: coarse)").matches) return;
 
-          var IDLE_MS = 140; // stillness before we consider settling
-          var PULL = 0.18; // settle only within this fraction of the viewport
-          var DURATION = 420;
+          var IDLE_MS = 110; // stillness (incl. native momentum) before we take over
+          var MIN_GESTURE = 20; // px of net travel before a gesture counts
+          var LAND_BACK = 0.12; // if we drifted less than this past a boundary, land back on it
+          var MIN_DUR = 240;
+          var MAX_DUR = 900;
           var navH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--nav-h"), 10) || 60;
 
           var tops = [];
           var idleTimer = null;
           var raf = null;
+          var suppressUntil = 0;
+          var gestureStart = null;
+          var lastY = 0;
+          var lastT = 0;
+          var peakV = 0; // px/ms, the fastest we moved during this gesture
 
           function remeasure() {
             var sy = window.scrollY;
@@ -829,71 +841,145 @@
             });
           }
 
+          function maxScroll() {
+            return document.documentElement.scrollHeight - window.innerHeight;
+          }
+
           function cancel() {
             if (raf) {
               cancelAnimationFrame(raf);
               raf = null;
+              document.documentElement.style.scrollBehavior = "";
             }
+          }
+
+          function resetGesture() {
+            gestureStart = null;
+            peakV = 0;
           }
 
           function easeOutCubic(t) {
             return 1 - Math.pow(1 - t, 3);
           }
 
-          function glideTo(target) {
+          function glide(target, duration) {
             var start = window.scrollY;
             var delta = target - start;
+            if (Math.abs(delta) < 2) return;
             var t0 = performance.now();
             var root = document.documentElement;
-            // CSS scroll-behavior: smooth would fight a manual tween, so suspend it
-            var prev = root.style.scrollBehavior;
-            root.style.scrollBehavior = "auto";
+            root.style.scrollBehavior = "auto"; // don't let CSS smooth fight the tween
             cancel();
             function step(now) {
-              var p = Math.min((now - t0) / DURATION, 1);
+              var p = Math.min((now - t0) / duration, 1);
               window.scrollTo(0, start + delta * easeOutCubic(p));
               if (p < 1) {
                 raf = requestAnimationFrame(step);
               } else {
                 raf = null;
-                root.style.scrollBehavior = prev;
+                root.style.scrollBehavior = "";
+                suppressUntil = performance.now() + 120; // ignore our own trailing scroll events
               }
             }
             raf = requestAnimationFrame(step);
           }
 
-          function onIdle() {
-            if (raf) return;
-            var sy = window.scrollY;
-            var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            // never fight the very top or bottom of the page
-            if (sy <= 2 || sy >= maxScroll - 2) return;
+          function onGestureEnd() {
+            var y = window.scrollY;
+            var net = gestureStart === null ? 0 : y - gestureStart;
+            var v = peakV;
+            resetGesture();
 
-            var best = null;
-            var bestDist = Infinity;
-            for (var i = 0; i < tops.length; i++) {
-              var d = Math.abs(tops[i] - sy);
-              if (d < bestDist) {
-                bestDist = d;
-                best = tops[i];
+            if (raf || performance.now() < suppressUntil) return;
+            if (Math.abs(net) < MIN_GESTURE) return; // too small to be a real gesture
+
+            var vh = window.innerHeight;
+            var limit = maxScroll();
+            var dir = net > 0 ? 1 : -1;
+            var target = null;
+            var i;
+
+            if (dir > 0) {
+              // did we only just drift past a boundary? land back on it
+              var passed = null;
+              for (i = 0; i < tops.length; i++) if (tops[i] <= y) passed = tops[i];
+              if (passed !== null && y - passed > 2 && y - passed < vh * LAND_BACK) {
+                target = passed;
+              } else {
+                for (i = 0; i < tops.length; i++) {
+                  if (tops[i] > y + 2) {
+                    target = tops[i];
+                    break;
+                  }
+                }
+                if (target === null) target = limit; // let the footer be reachable
+              }
+            } else {
+              var ahead = null;
+              for (i = tops.length - 1; i >= 0; i--) if (tops[i] >= y) ahead = tops[i];
+              if (ahead !== null && ahead - y > 2 && ahead - y < vh * LAND_BACK) {
+                target = ahead;
+              } else {
+                for (i = tops.length - 1; i >= 0; i--) {
+                  if (tops[i] < y - 2) {
+                    target = tops[i];
+                    break;
+                  }
+                }
+                if (target === null) target = 0;
               }
             }
-            if (best === null) return;
-            if (bestDist > 6 && bestDist < window.innerHeight * PULL) glideTo(best);
+
+            target = Math.max(0, Math.min(target, limit));
+            var dist = Math.abs(target - y);
+            if (dist < 2) return;
+
+            // carry through at roughly the speed you were already moving
+            var duration = dist / Math.max(v, 0.4);
+            duration = Math.max(MIN_DUR, Math.min(MAX_DUR, duration));
+            glide(target, duration);
           }
 
           window.addEventListener(
             "scroll",
             function () {
+              if (raf) return; // our own tween, not a gesture
+              var now = performance.now();
+              if (now < suppressUntil) return;
+              var y = window.scrollY;
+              if (gestureStart === null) {
+                gestureStart = y;
+              } else if (now > lastT) {
+                var v = Math.abs(y - lastY) / (now - lastT);
+                if (v > peakV) peakV = v; // peak, not terminal -- native momentum decays to ~0
+              }
+              lastY = y;
+              lastT = now;
               clearTimeout(idleTimer);
-              idleTimer = setTimeout(onIdle, IDLE_MS);
+              idleTimer = setTimeout(onGestureEnd, IDLE_MS);
             },
             { passive: true }
           );
 
-          // fresh user input always wins over an in-flight glide
-          ["wheel", "touchstart", "pointerdown", "keydown"].forEach(function (ev) {
-            window.addEventListener(ev, cancel, { passive: true });
+          // a fresh gesture always wins over an in-flight glide
+          ["wheel", "pointerdown", "keydown"].forEach(function (ev) {
+            window.addEventListener(
+              ev,
+              function () {
+                cancel();
+                resetGesture();
+              },
+              { passive: true }
+            );
+          });
+
+          // nav / anchor clicks do their own smooth scroll -- stay out of the way
+          document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+            a.addEventListener("click", function () {
+              cancel();
+              resetGesture();
+              suppressUntil = performance.now() + 900;
+            });
           });
 
           window.addEventListener("resize", remeasure);

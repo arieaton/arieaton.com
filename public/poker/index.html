@@ -70,12 +70,13 @@
       header {
         border-bottom: 1px solid var(--line);
       }
+      /* Top bar is deliberately full-bleed with the same inset and height as
+         every other page, so the wordmark doesn't jump around between pages. */
       header .wrap {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 1.1rem clamp(1.1rem, 4vw, 2rem);
+        height: 60px;
+        padding: 0 clamp(1.25rem, 5vw, 5rem);
         display: flex;
-        align-items: baseline;
+        align-items: center;
         justify-content: space-between;
         gap: 1rem;
       }
@@ -282,31 +283,109 @@
         font-weight: 500;
       }
 
-      .raise-row {
+      /* ---------- betting ---------- */
+      .simple-actions {
+        display: flex;
+        gap: 0.6rem;
+      }
+      .simple-actions button {
+        flex: 1;
+        max-width: 180px;
+      }
+
+      /* One bordered group = one action that needs an amount. */
+      .bet-group {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 0.9rem 1rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .bet-group.is-disabled {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      .bet-group-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .bet-group-title {
+        font-size: 0.64rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+      .bet-stack-left {
+        font-size: 0.7rem;
+        color: var(--faint);
+        font-variant-numeric: tabular-nums;
+      }
+      .bet-amount-row {
         display: flex;
         align-items: center;
-        gap: 0.7rem;
-        flex-wrap: wrap;
+        gap: 0.9rem;
       }
-      .raise-row input[type="range"] {
+      .bet-amount-row input[type="range"] {
         flex: 1;
-        min-width: 140px;
+        min-width: 120px;
         accent-color: var(--marigold);
       }
-      .raise-amt {
+      .bet-amount {
         font-variant-numeric: tabular-nums;
-        font-weight: 700;
+        font-weight: 800;
+        font-size: 1.35rem;
         color: var(--marigold);
         min-width: 4ch;
+        text-align: right;
       }
-      .quick-bets {
+      .bet-range-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.66rem;
+        color: var(--faint);
+        font-variant-numeric: tabular-nums;
+        margin-top: -0.5rem;
+      }
+      /* Presets are settings, not actions -- deliberately quieter than the
+         commit button so they don't read as "this bets now". */
+      .bet-presets {
         display: flex;
         gap: 0.4rem;
         flex-wrap: wrap;
       }
-      .quick-bets button {
-        padding: 0.35rem 0.6rem;
-        font-size: 0.72rem;
+      .bet-presets button {
+        flex: 1;
+        padding: 0.4rem 0.5rem;
+        font-size: 0.7rem;
+        font-weight: 500;
+        background: transparent;
+        color: var(--dim);
+      }
+      .bet-presets button:hover:not(:disabled) {
+        background: var(--surface);
+        color: var(--text);
+      }
+      .bet-presets button.allin {
+        color: var(--tomato);
+        border-color: color-mix(in srgb, var(--tomato) 35%, var(--line));
+      }
+      /* The only control that commits chips to a raise, and it always says how
+         many -- no confirming a number you can't see. */
+      .bet-commit {
+        background: var(--marigold);
+        color: var(--felt-edge);
+        border-color: var(--marigold);
+        font-size: 0.88rem;
+        padding: 0.7rem 1rem;
+      }
+      .bet-commit:hover:not(:disabled) {
+        background: #ffd27a;
+      }
+      #btn-call {
+        width: 100%;
       }
 
       /* ---------- log ---------- */
@@ -404,22 +483,40 @@
         <div class="action-bar">
           <p class="action-status" id="status-line">&nbsp;</p>
 
-          <div class="buttons-row" id="action-buttons">
+          <!-- Simple, one-tap decisions: no amount involved. -->
+          <div class="simple-actions" id="action-buttons">
             <button class="fold" id="btn-fold">fold</button>
-            <button class="call" id="btn-check-call">check</button>
-            <button class="raise" id="btn-raise">bet</button>
+            <button class="check" id="btn-check">check</button>
           </div>
 
-          <div class="raise-row" id="raise-controls" hidden>
-            <input type="range" id="raise-slider" />
-            <span class="raise-amt" id="raise-amt-label">0</span>
-            <div class="quick-bets">
+          <!-- Betting is one grouped action: pick an amount, then commit. Call
+               lives in here too, since matching the table is a bet of a fixed
+               size. The commit button always names the exact amount. -->
+          <div class="bet-group" id="bet-group">
+            <div class="bet-group-head">
+              <span class="bet-group-title">bet</span>
+              <span class="bet-stack-left" id="bet-stack-left"></span>
+            </div>
+
+            <button class="call" id="btn-call">call</button>
+
+            <div class="bet-amount-row">
+              <input type="range" id="raise-slider" aria-label="Bet amount" />
+              <output class="bet-amount" id="raise-amt-label">0</output>
+            </div>
+            <div class="bet-range-labels">
+              <span id="bet-min-label">min</span>
+              <span id="bet-max-label">max</span>
+            </div>
+
+            <div class="bet-presets">
+              <button id="qb-min">min</button>
               <button id="qb-half">½ pot</button>
               <button id="qb-pot">pot</button>
-              <button id="qb-allin">all in</button>
-              <button class="primary" id="btn-confirm-raise">confirm</button>
-              <button class="quiet" id="btn-cancel-raise">cancel</button>
+              <button id="qb-allin" class="allin">all in</button>
             </div>
+
+            <button class="bet-commit" id="btn-commit-bet">bet</button>
           </div>
 
           <div id="end-controls" hidden style="text-align: center">
@@ -780,7 +877,7 @@
           var banner = document.getElementById("end-banner");
           var continueBtn = document.getElementById("btn-continue");
           document.getElementById("action-buttons").hidden = true;
-          document.getElementById("raise-controls").hidden = true;
+          document.getElementById("bet-group").hidden = true;
 
           if (S.stacks[0] <= 0 || S.stacks[1] <= 0) {
             banner.textContent = S.stacks[0] <= 0 ? "you're out of chips." : "the bot is out of chips. you win.";
@@ -789,6 +886,7 @@
               S = null;
               endControls.hidden = true;
               document.getElementById("action-buttons").hidden = false;
+              document.getElementById("bet-group").hidden = false;
               newHand();
             };
           } else {
@@ -797,6 +895,7 @@
             continueBtn.onclick = function () {
               endControls.hidden = true;
               document.getElementById("action-buttons").hidden = false;
+              document.getElementById("bet-group").hidden = false;
               newHand();
             };
           }
@@ -929,13 +1028,49 @@
             statusLine.textContent = "bot is thinking...";
           }
 
+          // --- simple actions: fold is always available on your turn; check only
+          // when there's nothing owed.
           document.getElementById("btn-fold").disabled = !isYourTurn;
-          var checkCallBtn = document.getElementById("btn-check-call");
-          checkCallBtn.disabled = !isYourTurn;
-          checkCallBtn.textContent = toCall > 0 ? "call " + fmt(Math.min(toCall, S.stacks[0])) : "check";
-          var raiseBtn = document.getElementById("btn-raise");
-          raiseBtn.disabled = !isYourTurn || S.stacks[0] === 0;
-          raiseBtn.textContent = toCall > 0 ? "raise" : "bet";
+          var checkBtn = document.getElementById("btn-check");
+          checkBtn.disabled = !isYourTurn || toCall > 0;
+
+          // --- betting group
+          var canBet = isYourTurn && S.stacks[0] > 0;
+          var group = document.getElementById("bet-group");
+          group.classList.toggle("is-disabled", !canBet);
+
+          var callBtn = document.getElementById("btn-call");
+          if (toCall > 0) {
+            callBtn.hidden = false;
+            var callAmt = Math.min(toCall, S.stacks[0]);
+            callBtn.textContent =
+              callAmt >= S.stacks[0] ? "call all in (" + fmt(callAmt) + ")" : "call " + fmt(callAmt);
+            callBtn.disabled = !canBet;
+          } else {
+            callBtn.hidden = true;
+          }
+
+          document.getElementById("bet-stack-left").textContent = "you have " + fmt(S.stacks[0]);
+
+          // keep the slider bounds in step with the current spot
+          var minTo = Math.min(S.bets[1] + Math.max(S.minRaiseSize, BB), S.bets[0] + S.stacks[0]);
+          var maxTo = S.bets[0] + S.stacks[0];
+          var slider = document.getElementById("raise-slider");
+          slider.min = minTo;
+          slider.max = Math.max(maxTo, minTo);
+          if (!slider.value || +slider.value < minTo || +slider.value > maxTo) slider.value = minTo;
+          slider.disabled = !canBet || maxTo <= minTo;
+          document.getElementById("raise-amt-label").textContent = fmt(+slider.value);
+          document.getElementById("bet-min-label").textContent = "min " + fmt(minTo);
+          document.getElementById("bet-max-label").textContent = "max " + fmt(maxTo);
+
+          var commit = document.getElementById("btn-commit-bet");
+          commit.disabled = !canBet;
+          // the commit button always names the exact amount it will put in
+          commit.textContent =
+            (toCall > 0 ? "raise to " : "bet ") +
+            fmt(+slider.value) +
+            (+slider.value >= maxTo ? " (all in)" : "");
         }
 
         // ================= human controls =================
@@ -943,51 +1078,55 @@
           if (S.toAct !== 0) return;
           applyAction(0, "fold");
         });
-        document.getElementById("btn-check-call").addEventListener("click", function () {
+        document.getElementById("btn-check").addEventListener("click", function () {
           if (S.toAct !== 0) return;
-          var toCall = S.bets[1] - S.bets[0];
-          applyAction(0, toCall > 0 ? "call" : "check");
+          if (S.bets[1] - S.bets[0] > 0) return; // can't check facing a bet
+          applyAction(0, "check");
         });
 
-        var raiseControls = document.getElementById("raise-controls");
+        // --- betting group ---
         var raiseSlider = document.getElementById("raise-slider");
         var raiseAmtLabel = document.getElementById("raise-amt-label");
 
-        function openRaiseControls() {
-          var minTo = Math.min(S.bets[1] + Math.max(S.minRaiseSize, BB), S.bets[0] + S.stacks[0]);
-          var maxTo = S.bets[0] + S.stacks[0];
-          raiseSlider.min = minTo;
-          raiseSlider.max = Math.max(maxTo, minTo);
-          raiseSlider.value = minTo;
-          raiseAmtLabel.textContent = fmt(minTo);
-          raiseControls.hidden = false;
-        }
-        document.getElementById("btn-raise").addEventListener("click", function () {
-          if (S.toAct !== 0 || S.stacks[0] === 0) return;
-          openRaiseControls();
+        document.getElementById("btn-call").addEventListener("click", function () {
+          if (S.toAct !== 0) return;
+          if (S.bets[1] - S.bets[0] <= 0) return;
+          applyAction(0, "call");
         });
-        raiseSlider.addEventListener("input", function () {
+
+        function setAmount(v) {
+          var lo = +raiseSlider.min;
+          var hi = +raiseSlider.max;
+          raiseSlider.value = Math.min(Math.max(Math.round(v), lo), hi);
           raiseAmtLabel.textContent = fmt(+raiseSlider.value);
+          // keep the commit label in step so it always names what it will do
+          var toCall = S.bets[1] - S.bets[0];
+          document.getElementById("btn-commit-bet").textContent =
+            (toCall > 0 ? "raise to " : "bet ") +
+            fmt(+raiseSlider.value) +
+            (+raiseSlider.value >= hi ? " (all in)" : "");
+        }
+
+        raiseSlider.addEventListener("input", function () {
+          setAmount(+raiseSlider.value);
+        });
+
+        // presets only move the amount -- they never commit chips
+        document.getElementById("qb-min").addEventListener("click", function () {
+          setAmount(+raiseSlider.min);
         });
         document.getElementById("qb-half").addEventListener("click", function () {
-          var target = S.bets[0] + Math.round((S.pot + Math.max(S.bets[1] - S.bets[0], 0)) * 0.5);
-          raiseSlider.value = Math.min(Math.max(target, +raiseSlider.min), +raiseSlider.max);
-          raiseAmtLabel.textContent = fmt(+raiseSlider.value);
+          setAmount(S.bets[0] + Math.round((S.pot + Math.max(S.bets[1] - S.bets[0], 0)) * 0.5));
         });
         document.getElementById("qb-pot").addEventListener("click", function () {
-          var target = S.bets[0] + (S.pot + Math.max(S.bets[1] - S.bets[0], 0));
-          raiseSlider.value = Math.min(Math.max(target, +raiseSlider.min), +raiseSlider.max);
-          raiseAmtLabel.textContent = fmt(+raiseSlider.value);
+          setAmount(S.bets[0] + (S.pot + Math.max(S.bets[1] - S.bets[0], 0)));
         });
         document.getElementById("qb-allin").addEventListener("click", function () {
-          raiseSlider.value = raiseSlider.max;
-          raiseAmtLabel.textContent = fmt(+raiseSlider.value);
+          setAmount(+raiseSlider.max);
         });
-        document.getElementById("btn-cancel-raise").addEventListener("click", function () {
-          raiseControls.hidden = true;
-        });
-        document.getElementById("btn-confirm-raise").addEventListener("click", function () {
-          raiseControls.hidden = true;
+
+        document.getElementById("btn-commit-bet").addEventListener("click", function () {
+          if (S.toAct !== 0 || S.stacks[0] === 0) return;
           applyAction(0, "raise", +raiseSlider.value);
         });
 
