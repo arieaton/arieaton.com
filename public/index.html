@@ -801,190 +801,228 @@
           remeasure();
 
           initCursorTrail();
-          initScrollPaging();
+          initScrollTakeover();
         }
 
-        // ---- scroll paging ----------------------------------------------------
-        // Treats a scroll gesture as a direction vote rather than a literal
-        // displacement: when the gesture (and any native momentum) ends, carry
-        // through to the next section in the direction you were travelling, at a
-        // speed derived from how hard you flicked. A gentle nudge that only
-        // drifted just past a boundary lands back on it instead of paging a whole
-        // section further. Desktop pointers only -- touch keeps native scrolling,
-        // which already has its own momentum and doesn't take kindly to being
-        // driven from JS.
-        function initScrollPaging() {
+        // ---- scroll takeover --------------------------------------------------
+        // Native wheel scrolling is blocked outright and replaced with paging: one
+        // gesture moves you exactly one stop. This is deliberate -- every previous
+        // attempt layered paging *on top of* native scrolling, and macOS trackpad
+        // inertia keeps firing wheel events for up to a second or two after your
+        // fingers lift, so you'd get native drift, a pause, then a correction. The
+        // only way to get one-gesture-one-page is to own the scroll.
+        //
+        // Touch is left completely alone -- native momentum is the right behavior
+        // on a phone and doesn't take kindly to being driven from JS.
+        function initScrollTakeover() {
           var sections = Array.prototype.slice.call(document.querySelectorAll("main section[id]"));
           if (!sections.length) return;
           if (window.matchMedia("(pointer: coarse)").matches) return;
 
-          var IDLE_MS = 110; // stillness (incl. native momentum) before we take over
-          var MIN_GESTURE = 20; // px of net travel before a gesture counts
-          var LAND_BACK = 0.12; // if we drifted less than this past a boundary, land back on it
-          var MIN_DUR = 240;
-          var MAX_DUR = 900;
+          var WHEEL_THRESHOLD = 28; // accumulated delta before a gesture counts
+          var QUIET_MS = 170; // silence needed before a new gesture is accepted
+          var DURATION = 620;
           var navH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--nav-h"), 10) || 60;
 
-          var tops = [];
-          var idleTimer = null;
+          var stops = [];
+          var acc = 0;
+          var locked = false;
+          var quietTimer = null;
           var raf = null;
-          var suppressUntil = 0;
-          var gestureStart = null;
-          var lastY = 0;
-          var lastT = 0;
-          var peakV = 0; // px/ms, the fastest we moved during this gesture
-
-          function remeasure() {
-            var sy = window.scrollY;
-            tops = sections.map(function (s) {
-              return Math.round(s.getBoundingClientRect().top + sy - navH);
-            });
-          }
 
           function maxScroll() {
-            return document.documentElement.scrollHeight - window.innerHeight;
+            return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
           }
 
-          function cancel() {
-            if (raf) {
-              cancelAnimationFrame(raf);
-              raf = null;
-              document.documentElement.style.scrollBehavior = "";
+          // Stops are section tops, plus extra stops inside any section taller than
+          // the viewport (otherwise its overflow would be unreachable once we've
+          // taken the wheel away), plus the very bottom so the footer is reachable.
+          function buildStops() {
+            var sy = window.scrollY;
+            var usable = window.innerHeight - navH;
+            var limit = maxScroll();
+            var clamp01 = function (v) {
+              return Math.max(0, Math.min(Math.round(v), limit));
+            };
+
+            // Section tops (and the page bottom, so the footer stays reachable)
+            // are the real stops -- always kept.
+            var primary = sections.map(function (s) {
+              return clamp01(s.getBoundingClientRect().top + sy - navH);
+            });
+            primary.push(limit);
+
+            // Only sections genuinely taller than a screenful get interior stops.
+            // A section that merely overhangs by a little must not get one, or
+            // you'd stutter to a stop just short of the next section every time.
+            var extra = [];
+            sections.forEach(function (s) {
+              var rect = s.getBoundingClientRect();
+              if (rect.height <= usable * 1.3) return;
+              var top = rect.top + sy - navH;
+              var covered = usable;
+              while (covered < rect.height - usable * 0.3 && extra.length < 24) {
+                extra.push(clamp01(top + covered));
+                covered += usable;
+              }
+            });
+
+            // keep interior stops only where they aren't crowding a real one
+            var minGap = Math.max(120, usable * 0.25);
+            extra = extra.filter(function (v) {
+              return primary.every(function (p) {
+                return Math.abs(p - v) >= minGap;
+              });
+            });
+
+            stops = primary
+              .concat(extra)
+              .sort(function (a, b) {
+                return a - b;
+              })
+              .filter(function (v, i, arr) {
+                return i === 0 || v - arr[i - 1] > 8;
+              });
+          }
+
+          function nearestIndex() {
+            var y = window.scrollY;
+            var best = 0;
+            var bestD = Infinity;
+            for (var i = 0; i < stops.length; i++) {
+              var d = Math.abs(stops[i] - y);
+              if (d < bestD) {
+                bestD = d;
+                best = i;
+              }
             }
+            return best;
           }
 
-          function resetGesture() {
-            gestureStart = null;
-            peakV = 0;
+          function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
           }
 
-          function easeOutCubic(t) {
-            return 1 - Math.pow(1 - t, 3);
-          }
-
-          function glide(target, duration) {
+          function animateTo(target, done) {
             var start = window.scrollY;
             var delta = target - start;
-            if (Math.abs(delta) < 2) return;
+            if (Math.abs(delta) < 1) {
+              if (done) done();
+              return;
+            }
             var t0 = performance.now();
             var root = document.documentElement;
-            root.style.scrollBehavior = "auto"; // don't let CSS smooth fight the tween
-            cancel();
+            root.style.scrollBehavior = "auto"; // CSS smooth would fight the tween
+            if (raf) cancelAnimationFrame(raf);
             function step(now) {
-              var p = Math.min((now - t0) / duration, 1);
-              window.scrollTo(0, start + delta * easeOutCubic(p));
+              var p = Math.min((now - t0) / DURATION, 1);
+              window.scrollTo(0, start + delta * easeInOutCubic(p));
               if (p < 1) {
                 raf = requestAnimationFrame(step);
               } else {
                 raf = null;
                 root.style.scrollBehavior = "";
-                suppressUntil = performance.now() + 120; // ignore our own trailing scroll events
+                if (done) done();
               }
             }
             raf = requestAnimationFrame(step);
           }
 
-          function onGestureEnd() {
+          function page(dir) {
+            var i = nearestIndex();
             var y = window.scrollY;
-            var net = gestureStart === null ? 0 : y - gestureStart;
-            var v = peakV;
-            resetGesture();
-
-            if (raf || performance.now() < suppressUntil) return;
-            if (Math.abs(net) < MIN_GESTURE) return; // too small to be a real gesture
-
-            var vh = window.innerHeight;
-            var limit = maxScroll();
-            var dir = net > 0 ? 1 : -1;
-            var target = null;
-            var i;
-
-            if (dir > 0) {
-              // did we only just drift past a boundary? land back on it
-              var passed = null;
-              for (i = 0; i < tops.length; i++) if (tops[i] <= y) passed = tops[i];
-              if (passed !== null && y - passed > 2 && y - passed < vh * LAND_BACK) {
-                target = passed;
-              } else {
-                for (i = 0; i < tops.length; i++) {
-                  if (tops[i] > y + 2) {
-                    target = tops[i];
-                    break;
-                  }
-                }
-                if (target === null) target = limit; // let the footer be reachable
-              }
+            // if we're sitting between stops, treat the one we're heading toward
+            // as the next one rather than skipping past it
+            if (dir > 0 && stops[i] > y + 4) {
+              // already below us
+            } else if (dir < 0 && stops[i] < y - 4) {
+              // already above us
             } else {
-              var ahead = null;
-              for (i = tops.length - 1; i >= 0; i--) if (tops[i] >= y) ahead = tops[i];
-              if (ahead !== null && ahead - y > 2 && ahead - y < vh * LAND_BACK) {
-                target = ahead;
-              } else {
-                for (i = tops.length - 1; i >= 0; i--) {
-                  if (tops[i] < y - 2) {
-                    target = tops[i];
-                    break;
-                  }
-                }
-                if (target === null) target = 0;
-              }
+              i += dir;
             }
+            if (i < 0 || i >= stops.length) return false;
+            locked = true;
+            animateTo(stops[i], function () {
+              scheduleUnlock();
+            });
+            return true;
+          }
 
-            target = Math.max(0, Math.min(target, limit));
-            var dist = Math.abs(target - y);
-            if (dist < 2) return;
-
-            // carry through at roughly the speed you were already moving
-            var duration = dist / Math.max(v, 0.4);
-            duration = Math.max(MIN_DUR, Math.min(MAX_DUR, duration));
-            glide(target, duration);
+          function scheduleUnlock() {
+            clearTimeout(quietTimer);
+            quietTimer = setTimeout(function () {
+              if (!raf) {
+                locked = false;
+                acc = 0;
+              } else {
+                scheduleUnlock();
+              }
+            }, QUIET_MS);
           }
 
           window.addEventListener(
-            "scroll",
-            function () {
-              if (raf) return; // our own tween, not a gesture
-              var now = performance.now();
-              if (now < suppressUntil) return;
-              var y = window.scrollY;
-              if (gestureStart === null) {
-                gestureStart = y;
-              } else if (now > lastT) {
-                var v = Math.abs(y - lastY) / (now - lastT);
-                if (v > peakV) peakV = v; // peak, not terminal -- native momentum decays to ~0
+            "wheel",
+            function (e) {
+              if (e.ctrlKey) return; // let pinch-zoom through
+              e.preventDefault();
+              if (locked) {
+                scheduleUnlock(); // keep swallowing trailing inertia events
+                return;
               }
-              lastY = y;
-              lastT = now;
-              clearTimeout(idleTimer);
-              idleTimer = setTimeout(onGestureEnd, IDLE_MS);
+              acc += e.deltaY;
+              if (Math.abs(acc) >= WHEEL_THRESHOLD) {
+                var dir = acc > 0 ? 1 : -1;
+                acc = 0;
+                page(dir);
+                scheduleUnlock();
+              }
             },
-            { passive: true }
+            { passive: false }
           );
 
-          // a fresh gesture always wins over an in-flight glide
-          ["wheel", "pointerdown", "keydown"].forEach(function (ev) {
-            window.addEventListener(
-              ev,
-              function () {
-                cancel();
-                resetGesture();
-              },
-              { passive: true }
-            );
+          // wheel is ours now, so drive the keyboard too rather than leaving it
+          // to scroll natively to arbitrary positions
+          window.addEventListener("keydown", function (e) {
+            var t = e.target;
+            if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+            var k = e.key;
+            var dir = 0;
+            if (k === "ArrowDown" || k === "PageDown" || k === " ") dir = 1;
+            else if (k === "ArrowUp" || k === "PageUp") dir = -1;
+            else if (k === "Home") {
+              e.preventDefault();
+              locked = true;
+              animateTo(0, scheduleUnlock);
+              return;
+            } else if (k === "End") {
+              e.preventDefault();
+              locked = true;
+              animateTo(maxScroll(), scheduleUnlock);
+              return;
+            }
+            if (!dir || locked) return;
+            e.preventDefault();
+            page(dir);
           });
 
-          // nav / anchor clicks do their own smooth scroll -- stay out of the way
-          document.querySelectorAll('a[href^="#"]').forEach(function (a) {
-            a.addEventListener("click", function () {
-              cancel();
-              resetGesture();
-              suppressUntil = performance.now() + 900;
+          // nav / anchor links animate through the same path
+          Array.prototype.forEach.call(document.querySelectorAll('a[href^="#"]'), function (a) {
+            a.addEventListener("click", function (e) {
+              var id = a.getAttribute("href").slice(1);
+              var el = id ? document.getElementById(id) : null;
+              if (!el) return;
+              e.preventDefault();
+              buildStops();
+              var target = Math.round(el.getBoundingClientRect().top + window.scrollY - navH);
+              target = Math.max(0, Math.min(target, maxScroll()));
+              locked = true;
+              animateTo(target, scheduleUnlock);
             });
           });
 
-          window.addEventListener("resize", remeasure);
-          if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
-          remeasure();
+          window.addEventListener("resize", buildStops);
+          if (document.fonts && document.fonts.ready) document.fonts.ready.then(buildStops);
+          buildStops();
         }
 
         // ---- cursor trail ----------------------------------------------------
