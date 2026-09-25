@@ -56,15 +56,16 @@
       }
       html {
         color-scheme: light;
-        /* Soft snap: 'proximity' only pulls you in when you're already close to a
-           section edge, so a deliberate mid-section stop is respected and a fast
-           fling can still skip straight past. 'mandatory' would trap the scroll. */
-        scroll-snap-type: y proximity;
+        /* No CSS scroll-snap: even 'proximity' gives no control over the snap
+           threshold, and with full-height sections the browser treats a big
+           region as "near", so stopping mid-section still got yanked forward.
+           The settle is done in JS instead (see initSoftSettle), which only
+           engages after scrolling stops and only within a set distance.
+           scroll-behavior here is just for anchor/nav clicks. */
         scroll-behavior: smooth;
       }
       @media (prefers-reduced-motion: reduce) {
         html {
-          scroll-snap-type: none;
           scroll-behavior: auto;
         }
       }
@@ -177,10 +178,6 @@
 
       section {
         scroll-margin-top: var(--nav-h);
-        scroll-snap-align: start;
-        /* 'normal' (not 'always') lets a fast flick skip a section instead of
-           forcing a stop at every one -- the difference between soft and sticky. */
-        scroll-snap-stop: normal;
       }
 
       /* ---------- hero ---------- */
@@ -804,6 +801,104 @@
           remeasure();
 
           initCursorTrail();
+          initSoftSettle();
+        }
+
+        // ---- soft settle ------------------------------------------------------
+        // Replaces CSS scroll-snap. Nothing happens while you're scrolling. Once
+        // scrolling stops, if you've come to rest *close* to a section boundary it
+        // eases the rest of the way; past that threshold it leaves you alone, so a
+        // deliberate mid-section stop stays put. Any new input cancels the glide.
+        function initSoftSettle() {
+          var sections = Array.prototype.slice.call(document.querySelectorAll("main section[id]"));
+          if (!sections.length) return;
+
+          var IDLE_MS = 140; // stillness before we consider settling
+          var PULL = 0.18; // settle only within this fraction of the viewport
+          var DURATION = 420;
+          var navH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--nav-h"), 10) || 60;
+
+          var tops = [];
+          var idleTimer = null;
+          var raf = null;
+
+          function remeasure() {
+            var sy = window.scrollY;
+            tops = sections.map(function (s) {
+              return Math.round(s.getBoundingClientRect().top + sy - navH);
+            });
+          }
+
+          function cancel() {
+            if (raf) {
+              cancelAnimationFrame(raf);
+              raf = null;
+            }
+          }
+
+          function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+          }
+
+          function glideTo(target) {
+            var start = window.scrollY;
+            var delta = target - start;
+            var t0 = performance.now();
+            var root = document.documentElement;
+            // CSS scroll-behavior: smooth would fight a manual tween, so suspend it
+            var prev = root.style.scrollBehavior;
+            root.style.scrollBehavior = "auto";
+            cancel();
+            function step(now) {
+              var p = Math.min((now - t0) / DURATION, 1);
+              window.scrollTo(0, start + delta * easeOutCubic(p));
+              if (p < 1) {
+                raf = requestAnimationFrame(step);
+              } else {
+                raf = null;
+                root.style.scrollBehavior = prev;
+              }
+            }
+            raf = requestAnimationFrame(step);
+          }
+
+          function onIdle() {
+            if (raf) return;
+            var sy = window.scrollY;
+            var maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            // never fight the very top or bottom of the page
+            if (sy <= 2 || sy >= maxScroll - 2) return;
+
+            var best = null;
+            var bestDist = Infinity;
+            for (var i = 0; i < tops.length; i++) {
+              var d = Math.abs(tops[i] - sy);
+              if (d < bestDist) {
+                bestDist = d;
+                best = tops[i];
+              }
+            }
+            if (best === null) return;
+            if (bestDist > 6 && bestDist < window.innerHeight * PULL) glideTo(best);
+          }
+
+          window.addEventListener(
+            "scroll",
+            function () {
+              clearTimeout(idleTimer);
+              idleTimer = setTimeout(onIdle, IDLE_MS);
+            },
+            { passive: true }
+          );
+
+          // fresh user input always wins over an in-flight glide
+          ["wheel", "touchstart", "pointerdown", "keydown"].forEach(function (ev) {
+            window.addEventListener(ev, cancel, { passive: true });
+          });
+
+          window.addEventListener("resize", remeasure);
+          if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+          remeasure();
         }
 
         // ---- cursor trail ----------------------------------------------------
