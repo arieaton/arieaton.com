@@ -179,6 +179,10 @@
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
+        /* Tighter than the content inset on purpose: the wordmark sits in the
+           corner of the window, so its distance from the left edge roughly
+           matches its distance from the top. */
+        padding: 0 clamp(1rem, 2vw, 1.5rem);
       }
       .logo {
         font-weight: 800;
